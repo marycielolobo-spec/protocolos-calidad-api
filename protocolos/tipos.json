@@ -1,0 +1,1950 @@
+[
+  {
+    "codigo": "ST.CA.PC.001.F001",
+    "sigla": "RT",
+    "nombre": "Reporte Topográfico",
+    "categoria": "topografia",
+    "plantilla_firma": "STRACON_OPS_KP",
+    "qc_index": {
+      "hoja": "R. Topo",
+      "sin_adjuntos": true,
+      "sin_originador": true,
+      "columnas": [
+        [
+          "EQUIPO DE MEDICIÓN",
+          "c:equipo_medicion"
+        ],
+        [
+          "REALIZADO POR",
+          "c:topografo"
+        ]
+      ]
+    },
+    "schema": {
+      "secciones": [
+        {
+          "tipo": "checklist",
+          "titulo": "Actividades",
+          "opciones": "SI_NO_NA",
+          "grupos": [
+            {
+              "items": [
+                {
+                  "id": "c1",
+                  "texto": "Ubicación del B.M. del Proyecto"
+                },
+                {
+                  "id": "c2",
+                  "texto": "Ubicación de Puntos Auxiliares"
+                },
+                {
+                  "id": "c3",
+                  "texto": "Replanteo de Linderos del Terreno"
+                },
+                {
+                  "id": "c4",
+                  "texto": "Levantamiento Topográfico (*)",
+                  "ayuda": "Adjuntar archivo en caso de levantamiento topográfico"
+                },
+                {
+                  "id": "c5",
+                  "texto": "Trazo y replanteo de ejes"
+                },
+                {
+                  "id": "c6",
+                  "texto": "Distancia y proporcionalidad entre ejes"
+                },
+                {
+                  "id": "c7",
+                  "texto": "Colocación de niveles"
+                },
+                {
+                  "id": "c8",
+                  "texto": "Verticalidad y alineamiento"
+                },
+                {
+                  "id": "c9",
+                  "texto": "Otros",
+                  "extra": {
+                    "label": "Especificar"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tipo": "tabla",
+          "id": "equipos",
+          "titulo": "Datos de campo — Equipos",
+          "filas_fijas": [
+            "Equipo 1",
+            "Equipo 2"
+          ],
+          "columnas": [
+            {
+              "id": "marca",
+              "label": "Marca"
+            },
+            {
+              "id": "modelo",
+              "label": "Modelo"
+            },
+            {
+              "id": "serie",
+              "label": "Serie"
+            },
+            {
+              "id": "calibracion",
+              "label": "Calibración",
+              "tipo": "select",
+              "opciones": [
+                "SI",
+                "NO"
+              ]
+            },
+            {
+              "id": "certificado",
+              "label": "N° certificado"
+            }
+          ]
+        },
+        {
+          "tipo": "tabla",
+          "id": "georreferencia",
+          "titulo": "Georreferencia (punto B.M.)",
+          "filas_min": 1,
+          "columnas": [
+            {
+              "id": "punto",
+              "label": "Punto B.M."
+            },
+            {
+              "id": "tipo",
+              "label": "Tipo",
+              "tipo": "select",
+              "opciones": [
+                "BM",
+                "PA",
+                "PC"
+              ]
+            },
+            {
+              "id": "este",
+              "label": "Este",
+              "tipo": "number"
+            },
+            {
+              "id": "norte",
+              "label": "Norte",
+              "tipo": "number"
+            },
+            {
+              "id": "elevacion",
+              "label": "Elevación",
+              "tipo": "number"
+            }
+          ]
+        },
+        {
+          "tipo": "tabla",
+          "id": "puntos_referencia",
+          "titulo": "Datos de campo — Puntos de referencia",
+          "filas_min": 1,
+          "columnas": [
+            {
+              "id": "punto",
+              "label": "Punto de referencia"
+            },
+            {
+              "id": "tipo",
+              "label": "Tipo",
+              "tipo": "select",
+              "opciones": [
+                "BM",
+                "PA",
+                "PC"
+              ]
+            },
+            {
+              "id": "este",
+              "label": "Este",
+              "tipo": "number"
+            },
+            {
+              "id": "norte",
+              "label": "Norte",
+              "tipo": "number"
+            },
+            {
+              "id": "elevacion",
+              "label": "Elevación",
+              "tipo": "number"
+            }
+          ],
+          "nota": "BM: Bench Mark · PA: Puntos auxiliares · PC: Punto de control"
+        },
+        {
+          "tipo": "campos",
+          "titulo": "Datos complementarios",
+          "campos": [
+            {
+              "id": "equipo_medicion",
+              "label": "Equipo de medición",
+              "tipo": "select",
+              "lista": "equipo_medicion",
+              "requerido": true
+            },
+            {
+              "id": "archivo",
+              "label": "Archivo de levantamiento"
+            },
+            {
+              "id": "plano_adjunto",
+              "label": "Plano adjunto",
+              "tipo": "radio",
+              "opciones": [
+                "SI",
+                "NO"
+              ]
+            },
+            {
+              "id": "topografo",
+              "label": "Nombre del topógrafo",
+              "requerido": true
+            }
+          ]
+        }
+      ],
+      "conformidad": null,
+      "adjuntos": [
+        {
+          "id": "levantamiento",
+          "label": "Archivo de levantamiento topográfico",
+          "tipo_adjunto": "topografia"
+        }
+      ]
+    }
+  },
+  {
+    "codigo": "ST.CA.PC.001.F002",
+    "sigla": "ATF",
+    "nombre": "Aceptación de Terreno de Fundación",
+    "categoria": "fundacion",
+    "plantilla_firma": "STRACON_OPS_KP",
+    "qc_index": {
+      "hoja": "A. Fundac",
+      "columnas": [
+        [
+          "ÁREA (m2)",
+          "c:area"
+        ],
+        [
+          "LONGITUD (m)",
+          "calc:longitud"
+        ],
+        [
+          "PROGRESIVA INICIAL",
+          "prog:prog_inicial"
+        ],
+        [
+          "PROGRESIVA FINAL",
+          "prog:prog_final"
+        ],
+        [
+          "TURNO",
+          "turno"
+        ]
+      ]
+    },
+    "schema": {
+      "secciones": [
+        {
+          "tipo": "checklist",
+          "titulo": "Actividades",
+          "opciones": "SI_NO_NA",
+          "grupos": [
+            {
+              "titulo": "Control de superficie",
+              "items": [
+                {
+                  "id": "c1",
+                  "texto": "Revisión de planos y especificaciones en última revisión"
+                },
+                {
+                  "id": "c2",
+                  "texto": "Se ha efectuado el corte y eliminación del topsoil"
+                },
+                {
+                  "id": "c3",
+                  "texto": "Se ha efectuado el corte y eliminación del material inadecuado"
+                },
+                {
+                  "id": "c4",
+                  "texto": "Los afloramientos de agua han sido controlados y/o encauzados a los respectivos subdrenes"
+                },
+                {
+                  "id": "c5",
+                  "texto": "Superficie libre de material suelto"
+                },
+                {
+                  "id": "c6",
+                  "texto": "La superficie de fundación cumple con los límites y/o niveles, dimensiones de acuerdo a los planos del proyecto."
+                },
+                {
+                  "id": "c7",
+                  "texto": "La superficie de fundación se encuentra firme y estable"
+                },
+                {
+                  "id": "c8",
+                  "texto": "Se ha realizado el mapeo geológico del terreno."
+                }
+              ]
+            },
+            {
+              "titulo": "Ensayos realizados (a solicitud del Ingeniero)",
+              "items": [
+                {
+                  "id": "c9",
+                  "texto": "Se ha realizado ensayos para determinar la densidad del terreno.",
+                  "extra": {
+                    "label": "Densidad seca",
+                    "tipo": "number"
+                  }
+                },
+                {
+                  "id": "c10",
+                  "texto": "Se ha realizado ensayos (DPL) para determinar las condiciones de resistencia del terreno."
+                },
+                {
+                  "id": "c11",
+                  "texto": "Se realizó la extracción de muestra inalterada para ensayo triaxial"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tipo": "campos",
+          "titulo": "Medición",
+          "campos": [
+            {
+              "id": "area",
+              "label": "Área",
+              "tipo": "number",
+              "unidad": "m²"
+            },
+            {
+              "id": "nivel_terreno",
+              "label": "Nivel de terreno",
+              "unidad": "msnm"
+            },
+            {
+              "id": "prog_inicial",
+              "label": "Prog. inicial"
+            },
+            {
+              "id": "prog_final",
+              "label": "Prog. final"
+            },
+            {
+              "id": "rt_numero",
+              "label": "Reporte topográfico (RT N°)"
+            },
+            {
+              "id": "turno",
+              "label": "Turno",
+              "tipo": "radio",
+              "opciones": [
+                "Día",
+                "Noche"
+              ],
+              "requerido": true
+            }
+          ]
+        }
+      ],
+      "conformidad": {
+        "pregunta": "¿El terreno de fundación se encuentra liberado?"
+      },
+      "adjuntos": [
+        {
+          "id": "reporte_topografico",
+          "label": "Reporte Topográfico",
+          "tipo_adjunto": "topografia"
+        },
+        {
+          "id": "plano_utm",
+          "label": "Plano topográfico con coordenadas UTM",
+          "tipo_adjunto": "plano"
+        },
+        {
+          "id": "plano_geologico",
+          "label": "Plano geológico",
+          "tipo_adjunto": "plano"
+        }
+      ]
+    }
+  },
+  {
+    "codigo": "ST.CA.PC.002.F001",
+    "sigla": "ACR",
+    "nombre": "Aceptación de Capa de Relleno",
+    "categoria": "relleno",
+    "plantilla_firma": "STRACON_OPS_KP",
+    "qc_index": {
+      "hoja": "A. Relleno",
+      "columnas": [
+        [
+          "MATERIAL",
+          "k:c4b"
+        ],
+        [
+          "ESPESOR (mm)",
+          "k:c12"
+        ],
+        [
+          "CAPA",
+          "c:capa_n"
+        ],
+        [
+          "COTA (msnm)",
+          "c:cota"
+        ],
+        [
+          "ÁREA (m2)",
+          "c:area"
+        ],
+        [
+          "LONGITUD (m)",
+          "calc:longitud"
+        ],
+        [
+          "PROGRESIVA INICIAL",
+          "prog:prog_inicial"
+        ],
+        [
+          "PROGRESIVA FINAL",
+          "prog:prog_final"
+        ],
+        [
+          "TURNO",
+          "turno"
+        ]
+      ]
+    },
+    "schema": {
+      "secciones": [
+        {
+          "tipo": "campos",
+          "titulo": "Tipo de relleno",
+          "campos": [
+            {
+              "id": "tipo_relleno",
+              "label": "Tipo de relleno",
+              "tipo": "radio",
+              "requerido": true,
+              "opciones": [
+                "Relleno Masivo Controlado",
+                "Relleno Masivo No Controlado",
+                "Relleno Estructural Controlado",
+                "Relleno Estructural No Controlado"
+              ]
+            }
+          ]
+        },
+        {
+          "tipo": "checklist",
+          "titulo": "Actividades",
+          "opciones": "SI_NO_NA",
+          "grupos": [
+            {
+              "items": [
+                {
+                  "id": "c1",
+                  "texto": "El área para la colocación de relleno ha sido preparada, se ha escarificado la superficie de la capa anterior, la fundación ha sido aprobada (la verificación de la fundación sólo aplica para la primera capa de relleno).",
+                  "extra": {
+                    "label": "N° protocolo de fundación"
+                  }
+                },
+                {
+                  "id": "c2",
+                  "texto": "Se ha realizado el corte y reconformación del material de relleno para un adecuado engrampe con taludes de corte, estribos y/o capas anteriores."
+                },
+                {
+                  "id": "c3",
+                  "texto": "El material está previamente aprobado ya sea en cantera o acopio acorde a Especificaciones Técnicas del Proyecto, previo a los rellenos, en cuanto a gradación, humedad y demás propiedades físicas."
+                },
+                {
+                  "id": "c4",
+                  "texto": "El relleno se ha realizado con material de préstamo",
+                  "extra": {
+                    "label": "Cantera"
+                  }
+                },
+                {
+                  "id": "c4b",
+                  "texto": "Tipo de material de relleno empleado",
+                  "solo_extra": true,
+                  "extra": {
+                    "label": "Tipo de material",
+                    "tipo": "lista",
+                    "lista": "material_relleno"
+                  }
+                },
+                {
+                  "id": "c5",
+                  "texto": "El material de relleno está libre de materia orgánica y/o contaminado con otros materiales que no corresponden."
+                },
+                {
+                  "id": "c6",
+                  "texto": "El material de relleno cumple con los requerimientos de gradación indicados en las Especificaciones Técnicas del Proyecto."
+                },
+                {
+                  "id": "c7",
+                  "texto": "El contenido de humedad del material de relleno está dentro del rango recomendado en las Especificaciones Técnicas del Proyecto.",
+                  "extra": {
+                    "label": "% Humedad",
+                    "tipo": "number"
+                  }
+                },
+                {
+                  "id": "c8",
+                  "texto": "Se ha verificado el retiro de partículas de sobre tamaño"
+                },
+                {
+                  "id": "c9",
+                  "texto": "Se ha realizado una adecuada mezcla regular y constante de partículas para eliminar la segregación o el anidamiento de partículas finas."
+                },
+                {
+                  "id": "c10",
+                  "texto": "Se ha realizado una adecuada conformación y compactación del material de relleno: uniforme, homogéneo y sin segregación."
+                },
+                {
+                  "id": "c11",
+                  "texto": "El relleno cumple con las líneas y calificaciones de los dibujos mostrados en los Planos del Proyecto e intenciones de diseño."
+                },
+                {
+                  "id": "c12",
+                  "texto": "El espesor de la capa de relleno es conforme a lo indicado en las Especificaciones Técnicas del Proyecto.",
+                  "extra": {
+                    "label": "Espesor (mm)"
+                  }
+                },
+                {
+                  "id": "c13",
+                  "texto": "Se ha cumplido el mínimo de pasadas establecidas (en función a la Plataforma de Prueba realizada)",
+                  "extra": {
+                    "label": "N° pasadas"
+                  }
+                },
+                {
+                  "id": "c14",
+                  "texto": "Se ha cumplido el mínimo de ciclos establecidos (en función a la Plataforma de Prueba realizada)",
+                  "extra": {
+                    "label": "N° ciclos"
+                  }
+                },
+                {
+                  "id": "c15",
+                  "texto": "Se ha alcanzado el grado de compactación mínimo requerido (sólo aplica cuando en función a la frecuencia sea requerida)",
+                  "extra": {
+                    "label": "% Compactación",
+                    "tipo": "number"
+                  }
+                },
+                {
+                  "id": "c16",
+                  "texto": "Se ha alcanzado la Densidad Seca requerida",
+                  "extra": {
+                    "label": "Densidad seca",
+                    "tipo": "number"
+                  }
+                },
+                {
+                  "id": "c17",
+                  "texto": "Conformidad de la capa de relleno: la superficie se encuentra limpia y nivelada, es firme y estable."
+                },
+                {
+                  "id": "c18",
+                  "texto": "Se ha verificado y aceptado el registro de tránsito de los Camiones Mineros CAT 793F y/o Flota Mina sobre la capa evaluada."
+                },
+                {
+                  "id": "c19",
+                  "texto": "Se ha verificado y aceptado límites topográficos para conformación de materiales PAG y NAG-1."
+                },
+                {
+                  "id": "c20",
+                  "texto": "La zona a rellenar se encuentra libre de materiales sueltos y materiales que no corresponden."
+                },
+                {
+                  "id": "c21",
+                  "texto": "En caso de rellenos para asentamiento de tuberías, se ha verificado que ésta se encuentre bien sujetada y anclada de tal manera que al realizar el relleno (MRBC) no genere levantamiento de la tubería."
+                },
+                {
+                  "id": "c22",
+                  "texto": "En caso de rellenos para zanjas de anclaje, se ha verificado que la geomembrana esté contraída."
+                },
+                {
+                  "id": "c23",
+                  "texto": "El Material de Baja Resistencia Controlada (MRBC) está libre de materia orgánica y/o contaminado con otros materiales que no corresponden."
+                },
+                {
+                  "id": "c24",
+                  "texto": "Se han realizado los controles de laboratorio respectivos antes del vaciado del MRBC."
+                },
+                {
+                  "id": "c25",
+                  "texto": "La altura máxima de descarga no debe superar 1.50 m."
+                },
+                {
+                  "id": "c26",
+                  "texto": "El MRBC ocupa todos los espacios de la zanja, sin segregación y nivelado."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tipo": "tabla",
+          "id": "prestamo",
+          "titulo": "Material de préstamo",
+          "filas_min": 1,
+          "columnas": [
+            {
+              "id": "fase",
+              "label": "Fase"
+            },
+            {
+              "id": "banco",
+              "label": "Banco"
+            },
+            {
+              "id": "poligono",
+              "label": "Polígono"
+            }
+          ]
+        },
+        {
+          "tipo": "campos",
+          "titulo": "Compactación",
+          "campos": [
+            {
+              "id": "equipo_compactacion",
+              "label": "Equipo utilizado en la compactación",
+              "tipo": "lista",
+              "lista": "equipo_compactacion"
+            },
+            {
+              "id": "plataforma_prueba",
+              "label": "Acorde a la plataforma de prueba"
+            }
+          ]
+        },
+        {
+          "tipo": "campos",
+          "titulo": "Datos de la capa",
+          "campos": [
+            {
+              "id": "stage",
+              "label": "Stage"
+            },
+            {
+              "id": "capa_n",
+              "label": "Capa N°",
+              "requerido": true
+            },
+            {
+              "id": "area",
+              "label": "Área",
+              "tipo": "number",
+              "unidad": "m²"
+            },
+            {
+              "id": "cota",
+              "label": "Cota",
+              "unidad": "msnm"
+            },
+            {
+              "id": "volumen",
+              "label": "Volumen",
+              "tipo": "number",
+              "unidad": "m³"
+            },
+            {
+              "id": "prog_inicial",
+              "label": "Prog. inicial"
+            },
+            {
+              "id": "prog_final",
+              "label": "Prog. final"
+            },
+            {
+              "id": "inicio_capa",
+              "label": "Inicio de capa (fecha y hora)",
+              "tipo": "datetime"
+            },
+            {
+              "id": "fin_capa",
+              "label": "Fin de capa (fecha y hora)",
+              "tipo": "datetime"
+            },
+            {
+              "id": "turno",
+              "label": "Turno",
+              "tipo": "radio",
+              "opciones": [
+                "Día",
+                "Noche"
+              ],
+              "requerido": true
+            }
+          ]
+        }
+      ],
+      "conformidad": {
+        "pregunta": "¿La capa de relleno se encuentra liberada?"
+      },
+      "adjuntos": [
+        {
+          "id": "reporte_topografico",
+          "label": "Reporte Topográfico",
+          "tipo_adjunto": "topografia"
+        },
+        {
+          "id": "plano_topografico",
+          "label": "Plano Topográfico",
+          "tipo_adjunto": "plano"
+        },
+        {
+          "id": "protocolo_capa",
+          "label": "Protocolo de Aceptación de Capa",
+          "tipo_adjunto": "calidad"
+        }
+      ]
+    }
+  },
+  {
+    "codigo": "ST.CA.PC.003.F001",
+    "sigla": "IPREVC",
+    "nombre": "Inspección Prevaciado de Concreto",
+    "categoria": "vaciado",
+    "plantilla_firma": "STRACON_OPS_KP",
+    "qc_index": {
+      "hoja": "Insp Prev",
+      "columnas": [
+        [
+          "f´c (MPa)",
+          "c:fc"
+        ],
+        [
+          "VOLUMEN (m3)",
+          "c:volumen"
+        ],
+        [
+          "N° DE TESTIGOS DE PRUEBA",
+          "c:n_testigos"
+        ],
+        [
+          "CÓDIGO DE TESTIGOS DE PRUEBA",
+          "c:codigo_testigos"
+        ],
+        [
+          "ASENTAMIENTO (pulgadas)",
+          "c:slump"
+        ],
+        [
+          "TURNO",
+          "turno"
+        ]
+      ]
+    },
+    "schema": {
+      "secciones": [
+        {
+          "tipo": "campos",
+          "titulo": "Referencias",
+          "campos": [
+            {
+              "id": "planos_especificaciones",
+              "label": "Planos y especificaciones de referencia",
+              "tipo": "textarea"
+            },
+            {
+              "id": "documentos_complementarios",
+              "label": "Documentos de referencia complementarios",
+              "tipo": "textarea"
+            }
+          ]
+        },
+        {
+          "tipo": "checklist",
+          "titulo": "Inspección en terreno",
+          "opciones": "C_NC_NA",
+          "grupos": [
+            {
+              "titulo": "1. Encofrado",
+              "items": [
+                {
+                  "id": "e1",
+                  "texto": "Inspección topográfica"
+                },
+                {
+                  "id": "e2",
+                  "texto": "Orientación"
+                },
+                {
+                  "id": "e3",
+                  "texto": "Localización"
+                },
+                {
+                  "id": "e4",
+                  "texto": "Dimensiones",
+                  "extra": {
+                    "label": "Dimensiones"
+                  }
+                },
+                {
+                  "id": "e5",
+                  "texto": "Niveles"
+                },
+                {
+                  "id": "e6",
+                  "texto": "Alineamiento, aplomo, nivel"
+                },
+                {
+                  "id": "e7",
+                  "texto": "Limpieza y aplicación del desmoldante"
+                },
+                {
+                  "id": "e8",
+                  "texto": "Calidad de la superficie de encofrado"
+                },
+                {
+                  "id": "e9",
+                  "texto": "Recubrimientos"
+                },
+                {
+                  "id": "e10",
+                  "texto": "Chaflanes"
+                },
+                {
+                  "id": "e11",
+                  "texto": "Juntas",
+                  "extra": {
+                    "label": "Juntas de"
+                  }
+                },
+                {
+                  "id": "e12",
+                  "texto": "Apuntalamiento y arriostramiento"
+                },
+                {
+                  "id": "e13",
+                  "texto": "Ventanas"
+                },
+                {
+                  "id": "e14",
+                  "texto": "Otro",
+                  "extra": {
+                    "label": "Especificar"
+                  }
+                }
+              ]
+            },
+            {
+              "titulo": "2. Acero de refuerzo",
+              "items": [
+                {
+                  "id": "a1",
+                  "texto": "Grado"
+                },
+                {
+                  "id": "a2",
+                  "texto": "Diámetro"
+                },
+                {
+                  "id": "a3",
+                  "texto": "Posicionamiento y cantidad"
+                },
+                {
+                  "id": "a4",
+                  "texto": "Espaciamiento entre barras"
+                },
+                {
+                  "id": "a5",
+                  "texto": "Longitud de empalmes"
+                },
+                {
+                  "id": "a6",
+                  "texto": "Estabilizadores / soportes / dados"
+                },
+                {
+                  "id": "a7",
+                  "texto": "Alineamiento vertical y horizontal"
+                },
+                {
+                  "id": "a8",
+                  "texto": "Limpieza de las barras"
+                },
+                {
+                  "id": "a9",
+                  "texto": "Dobleces"
+                },
+                {
+                  "id": "a10",
+                  "texto": "Anclaje de armadura",
+                  "extra": {
+                    "label": "Ø / Long. anclaje"
+                  }
+                }
+              ]
+            },
+            {
+              "titulo": "3. Terreno de fundación",
+              "items": [
+                {
+                  "id": "t1",
+                  "texto": "Nivel (liberación topográfica)"
+                },
+                {
+                  "id": "t2",
+                  "texto": "Roca"
+                },
+                {
+                  "id": "t3",
+                  "texto": "Tipo de suelo"
+                },
+                {
+                  "id": "t4",
+                  "texto": "Terreno compactado"
+                },
+                {
+                  "id": "t5",
+                  "texto": "Limpieza de la superficie"
+                },
+                {
+                  "id": "t6",
+                  "texto": "Humedad de la superficie"
+                },
+                {
+                  "id": "t7",
+                  "texto": "Junta de construcción"
+                },
+                {
+                  "id": "t8",
+                  "texto": "Solado"
+                },
+                {
+                  "id": "t9",
+                  "texto": "Superficie escarificada"
+                },
+                {
+                  "id": "t10",
+                  "texto": "Sin presencia de agua"
+                },
+                {
+                  "id": "t11",
+                  "texto": "Interferencias mecánicas & eléctricas"
+                },
+                {
+                  "id": "t12",
+                  "texto": "Otro",
+                  "extra": {
+                    "label": "Especificar"
+                  }
+                }
+              ]
+            },
+            {
+              "titulo": "4. Elementos embebidos",
+              "items": [
+                {
+                  "id": "m1",
+                  "texto": "Pernos de anclaje (diámetro, longitud, tipo, lugar, proyección, protección, longitud libre y embebida)"
+                },
+                {
+                  "id": "m2",
+                  "texto": "Elementos de soldadura"
+                },
+                {
+                  "id": "m3",
+                  "texto": "Mangas"
+                },
+                {
+                  "id": "m4",
+                  "texto": "Hilos de rosca"
+                },
+                {
+                  "id": "m5",
+                  "texto": "Cuadratura"
+                },
+                {
+                  "id": "m6",
+                  "texto": "Insertos"
+                },
+                {
+                  "id": "m7",
+                  "texto": "Tuberías y/o pases",
+                  "extra": {
+                    "label": "Detalle"
+                  }
+                },
+                {
+                  "id": "m8",
+                  "texto": "Protección de tubería",
+                  "extra": {
+                    "label": "Detalle"
+                  }
+                },
+                {
+                  "id": "m9",
+                  "texto": "Conductos"
+                },
+                {
+                  "id": "m10",
+                  "texto": "Puesta a tierra"
+                },
+                {
+                  "id": "m11",
+                  "texto": "Water stop"
+                },
+                {
+                  "id": "m12",
+                  "texto": "Otro",
+                  "extra": {
+                    "label": "Especificar"
+                  }
+                }
+              ]
+            },
+            {
+              "titulo": "5. Misceláneos",
+              "items": [
+                {
+                  "id": "s1",
+                  "texto": "Sistema de microclima"
+                },
+                {
+                  "id": "s2",
+                  "texto": "Llaves"
+                },
+                {
+                  "id": "s3",
+                  "texto": "Herramientas y accesorios"
+                },
+                {
+                  "id": "s4",
+                  "texto": "Superficie rugosa"
+                },
+                {
+                  "id": "s5",
+                  "texto": "Amarres"
+                },
+                {
+                  "id": "s6",
+                  "texto": "Tipo de acabado"
+                },
+                {
+                  "id": "s7",
+                  "texto": "Verificación de equipos para colocación de bombas y vibradoras de concreto"
+                },
+                {
+                  "id": "s8",
+                  "texto": "Sistema de salida de concreto"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tipo": "campos",
+          "titulo": "7. Especificaciones del concreto",
+          "campos": [
+            {
+              "id": "clasificacion",
+              "label": "Clasificación del concreto"
+            },
+            {
+              "id": "fc",
+              "label": "Resistencia f'c",
+              "tipo": "select",
+              "lista": "fc"
+            },
+            {
+              "id": "hora_inicio",
+              "label": "Inicio de vaciado (hora programada)",
+              "tipo": "time"
+            },
+            {
+              "id": "tmax_agregado",
+              "label": "Tamaño máx. de agregado"
+            },
+            {
+              "id": "aire",
+              "label": "% de aire",
+              "tipo": "number"
+            },
+            {
+              "id": "slump",
+              "label": "Asentamiento (pulgadas)",
+              "tipo": "lista",
+              "lista": "asentamiento"
+            },
+            {
+              "id": "n_testigos",
+              "label": "N° de testigos de prueba",
+              "tipo": "number"
+            },
+            {
+              "id": "codigo_testigos",
+              "label": "Código de testigos de prueba"
+            },
+            {
+              "id": "aditivos",
+              "label": "Aditivos"
+            },
+            {
+              "id": "volumen",
+              "label": "Volumen (planos)",
+              "tipo": "number",
+              "unidad": "m³"
+            },
+            {
+              "id": "turno",
+              "label": "Turno",
+              "tipo": "radio",
+              "opciones": [
+                "Día",
+                "Noche"
+              ],
+              "requerido": true
+            }
+          ]
+        }
+      ],
+      "conformidad": null,
+      "adjuntos": [
+        {
+          "id": "reporte_topografico",
+          "label": "Reporte Topográfico",
+          "tipo_adjunto": "topografia"
+        },
+        {
+          "id": "plano_utm",
+          "label": "Plano topográfico con coordenadas UTM",
+          "tipo_adjunto": "plano"
+        },
+        {
+          "id": "croquis",
+          "label": "Croquis de referencia",
+          "tipo_adjunto": "croquis"
+        }
+      ]
+    }
+  },
+  {
+    "codigo": "ST.CA.PC.003.F002",
+    "sigla": "IPOSTVC",
+    "nombre": "Inspección Postvaciado de Concreto",
+    "categoria": "vaciado",
+    "plantilla_firma": "STRACON_OPS_KP",
+    "qc_index": {
+      "hoja": "Insp Postv",
+      "columnas": [
+        [
+          "f´c (MPa)",
+          "c:fc"
+        ],
+        [
+          "TURNO",
+          "turno"
+        ]
+      ]
+    },
+    "schema": {
+      "secciones": [
+        {
+          "tipo": "campos",
+          "titulo": "Referencias",
+          "campos": [
+            {
+              "id": "planos_especificaciones",
+              "label": "Planos y especificaciones de referencia",
+              "tipo": "textarea"
+            },
+            {
+              "id": "documentos_complementarios",
+              "label": "Documentos de referencia complementarios",
+              "tipo": "textarea"
+            }
+          ]
+        },
+        {
+          "tipo": "checklist",
+          "titulo": "Inspección en terreno",
+          "opciones": "C_NC_NA",
+          "grupos": [
+            {
+              "titulo": "1. Inspección general",
+              "items": [
+                {
+                  "id": "g1",
+                  "texto": "Consolidación"
+                },
+                {
+                  "id": "g2",
+                  "texto": "Ubicación de elementos embebidos"
+                },
+                {
+                  "id": "g3",
+                  "texto": "Protección (clima y física)"
+                },
+                {
+                  "id": "g4",
+                  "texto": "Aplicación de endurecedor / antipolvo"
+                },
+                {
+                  "id": "g5",
+                  "texto": "Aplicación de endurecedor metálico para pisos"
+                },
+                {
+                  "id": "g6",
+                  "texto": "Resanes"
+                },
+                {
+                  "id": "g7",
+                  "texto": "Desencofrado"
+                },
+                {
+                  "id": "g8",
+                  "texto": "Corte de juntas de piso"
+                },
+                {
+                  "id": "g9",
+                  "texto": "Instalación de sellador de juntas de piso"
+                },
+                {
+                  "id": "g10",
+                  "texto": "Curado"
+                },
+                {
+                  "id": "g11",
+                  "texto": "Remoción de curador"
+                },
+                {
+                  "id": "g12",
+                  "texto": "Verticalidad y horizontalidad de la estructura"
+                }
+              ]
+            },
+            {
+              "titulo": "2. Acabado superficial",
+              "items": [
+                {
+                  "id": "f1",
+                  "texto": "Apariencia general"
+                },
+                {
+                  "id": "f2",
+                  "texto": "Refuerzo no expuesto"
+                },
+                {
+                  "id": "f3",
+                  "texto": "Sin cangrejeras"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tipo": "campos",
+          "titulo": "3. Calidad de concreto por verificar",
+          "campos": [
+            {
+              "id": "clasificacion",
+              "label": "Clasificación del concreto"
+            },
+            {
+              "id": "fc",
+              "label": "Resistencia f'c",
+              "tipo": "select",
+              "lista": "fc"
+            },
+            {
+              "id": "turno",
+              "label": "Turno",
+              "tipo": "radio",
+              "opciones": [
+                "Día",
+                "Noche"
+              ],
+              "requerido": true
+            }
+          ]
+        }
+      ],
+      "conformidad": null,
+      "adjuntos": [
+        {
+          "id": "reporte_topografico",
+          "label": "Reporte Topográfico",
+          "tipo_adjunto": "topografia"
+        },
+        {
+          "id": "plano_utm",
+          "label": "Plano topográfico con coordenadas UTM",
+          "tipo_adjunto": "plano"
+        },
+        {
+          "id": "croquis",
+          "label": "Croquis de referencia",
+          "tipo_adjunto": "croquis"
+        }
+      ]
+    }
+  },
+  {
+    "codigo": "ST.CA.PC.008.F001",
+    "sigla": "IS",
+    "nombre": "Instalación de Subdrenes",
+    "categoria": "relleno",
+    "plantilla_firma": "STRACON_OPS_KP",
+    "qc_index": {
+      "hoja": "Inst Subd",
+      "columnas": [
+        [
+          "LONGITUD",
+          "c:longitud"
+        ],
+        [
+          "PROG. INICIAL",
+          "prog:prog_inicial"
+        ],
+        [
+          "PROG. FINAL",
+          "prog:prog_final"
+        ],
+        [
+          "TIPO DE TUBERÍA",
+          "c:tipo_tuberia"
+        ],
+        [
+          "DIAMETRO DE TUBERÍA (mm)",
+          "c:diametro"
+        ],
+        [
+          "TURNO",
+          "turno"
+        ]
+      ]
+    },
+    "schema": {
+      "secciones": [
+        {
+          "tipo": "checklist",
+          "titulo": "Actividades",
+          "opciones": "SI_NO_NA",
+          "grupos": [
+            {
+              "titulo": "Fundación",
+              "items": [
+                {
+                  "id": "f1",
+                  "texto": "Se ha verificado el alineamiento de acuerdo a los planos (antes de la excavación de la zanja/trinchera)"
+                },
+                {
+                  "id": "f2",
+                  "texto": "El corte se ha realizado en terreno natural, la superficie está libre de material orgánico"
+                },
+                {
+                  "id": "f3",
+                  "texto": "No hay presencia de material inadecuado en la zanja/trinchera"
+                },
+                {
+                  "id": "f4",
+                  "texto": "Se realizó la limpieza de todo material suelto y punzocortante"
+                },
+                {
+                  "id": "f5",
+                  "texto": "Pendiente mínima de acuerdo a los planos del proyecto"
+                }
+              ]
+            },
+            {
+              "titulo": "Geotextil",
+              "items": [
+                {
+                  "id": "g1",
+                  "texto": "Se ha verificado el buen estado del geotextil"
+                },
+                {
+                  "id": "g2",
+                  "texto": "Colocación de geotextil de acuerdo a planos (traslape mínimo de 500 mm)"
+                }
+              ]
+            },
+            {
+              "titulo": "Tuberías",
+              "items": [
+                {
+                  "id": "t1",
+                  "texto": "Se ha verificado el buen estado de las tuberías",
+                  "extra": {
+                    "label": "Cant. tuberías",
+                    "tipo": "number"
+                  }
+                },
+                {
+                  "id": "t2",
+                  "texto": "Acoplamientos corrugados coinciden con las corrugaciones de las tuberías"
+                },
+                {
+                  "id": "t3",
+                  "texto": "Correcta colocación de acoples y accesorios",
+                  "extra": {
+                    "label": "Cant. acoples",
+                    "tipo": "number"
+                  }
+                },
+                {
+                  "id": "t4",
+                  "texto": "Precintos de seguridad colocados de forma correcta y completa",
+                  "extra": {
+                    "label": "Cant. precintos",
+                    "tipo": "number"
+                  }
+                },
+                {
+                  "id": "t5",
+                  "texto": "La pendiente, distribución y alineamiento de las tuberías es uniforme"
+                }
+              ]
+            },
+            {
+              "titulo": "Grava de drenaje",
+              "items": [
+                {
+                  "id": "d1",
+                  "texto": "El material de grava gruesa para drenaje ha sido aprobado con ensayos previos de laboratorio, cumple las EETT",
+                  "extra": {
+                    "label": "N° de ensayo"
+                  }
+                },
+                {
+                  "id": "d2",
+                  "texto": "Colocación y extensión del material con equipo y de forma manual"
+                },
+                {
+                  "id": "d3",
+                  "texto": "No hay presencia de material orgánico, partículas de sobretamaño u otro material inadecuado"
+                },
+                {
+                  "id": "d4",
+                  "texto": "No hay presencia de segregación y acumulación de partículas finas"
+                },
+                {
+                  "id": "d5",
+                  "texto": "Cumple con la sección y espesor de acuerdo a los planos"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tipo": "campos",
+          "titulo": "Materiales y medición",
+          "campos": [
+            {
+              "id": "tipo_tuberia",
+              "label": "Tipo de tubería instalada",
+              "tipo": "lista",
+              "lista": "tipo_tuberia"
+            },
+            {
+              "id": "diametro",
+              "label": "Diámetro de tubería",
+              "tipo": "number",
+              "unidad": "mm"
+            },
+            {
+              "id": "lote_tuberia",
+              "label": "Lote (tubería)"
+            },
+            {
+              "id": "tipo_geotextil",
+              "label": "Tipo de geotextil utilizado"
+            },
+            {
+              "id": "lote_geotextil",
+              "label": "Lote (geotextil)"
+            },
+            {
+              "id": "longitud",
+              "label": "Longitud",
+              "tipo": "number",
+              "unidad": "m"
+            },
+            {
+              "id": "pendiente",
+              "label": "Pendiente",
+              "tipo": "number",
+              "unidad": "%"
+            },
+            {
+              "id": "prog_inicial",
+              "label": "Prog. inicial"
+            },
+            {
+              "id": "prog_final",
+              "label": "Prog. final"
+            },
+            {
+              "id": "turno",
+              "label": "Turno",
+              "tipo": "radio",
+              "opciones": [
+                "Día",
+                "Noche"
+              ],
+              "requerido": true
+            }
+          ]
+        }
+      ],
+      "conformidad": {
+        "pregunta": "¿La instalación de subdren es conforme?"
+      },
+      "adjuntos": [
+        {
+          "id": "reporte_topografico",
+          "label": "Reporte Topográfico",
+          "tipo_adjunto": "topografia"
+        },
+        {
+          "id": "plano_utm",
+          "label": "Plano topográfico con coordenadas UTM",
+          "tipo_adjunto": "plano"
+        }
+      ]
+    }
+  },
+  {
+    "codigo": "ST.CA.PC.008.F002",
+    "sigla": "ID",
+    "nombre": "Instalación de Drenes",
+    "categoria": "relleno",
+    "plantilla_firma": "STRACON_OPS_KP",
+    "qc_index": {
+      "hoja": "Inst Dren",
+      "columnas": [
+        [
+          "LONGITUD",
+          "c:longitud"
+        ],
+        [
+          "PROG. INICIAL",
+          "prog:prog_inicial"
+        ],
+        [
+          "PROG. FINAL",
+          "prog:prog_final"
+        ],
+        [
+          "TIPO DE TUBERÍA",
+          "c:tipo_tuberia"
+        ],
+        [
+          "DIAMETRO DE TUBERÍA (mm)",
+          "c:diametro"
+        ],
+        [
+          "TURNO",
+          "turno"
+        ]
+      ]
+    },
+    "schema": {
+      "secciones": [
+        {
+          "tipo": "checklist",
+          "titulo": "Actividades",
+          "opciones": "SI_NO_NA",
+          "grupos": [
+            {
+              "items": [
+                {
+                  "id": "c1",
+                  "texto": "El corte se ha realizado en suelo estable y se ha eliminado el topsoil y/o material inadecuado"
+                },
+                {
+                  "id": "c2",
+                  "texto": "Los afloramientos de agua han sido encauzados"
+                },
+                {
+                  "id": "c3",
+                  "texto": "Se ha removido todo el material flojo y material punzocortante que pudiera dañar el geotextil"
+                },
+                {
+                  "id": "c4",
+                  "texto": "Se ha preparado y acondicionado la superficie de fundación"
+                },
+                {
+                  "id": "c5",
+                  "texto": "Se ha verificado el buen estado de las tuberías"
+                },
+                {
+                  "id": "c6",
+                  "texto": "La pendiente, distribución y alineamiento de las tuberías es uniforme"
+                },
+                {
+                  "id": "c7",
+                  "texto": "Acoplamientos corrugados coinciden con las corrugaciones"
+                },
+                {
+                  "id": "c8",
+                  "texto": "Correcta colocación de acoples, precintos y accesorios entre las tuberías"
+                },
+                {
+                  "id": "c9",
+                  "texto": "El material drenante cumple con la granulometría especificada"
+                },
+                {
+                  "id": "c10",
+                  "texto": "El material no presenta material orgánico u otro material inadecuado"
+                },
+                {
+                  "id": "c11",
+                  "texto": "Se ha evitado la compactación local del material para el drenaje"
+                },
+                {
+                  "id": "c12",
+                  "texto": "Las condiciones del geotextil son aceptables y se cumple con el traslape mínimo"
+                },
+                {
+                  "id": "c13",
+                  "texto": "La sección del dren cumple con las dimensiones mínimas establecidas en las especificaciones técnicas"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tipo": "campos",
+          "titulo": "Materiales y medición",
+          "campos": [
+            {
+              "id": "tipo_tuberia",
+              "label": "Tipo de tubería instalada",
+              "tipo": "lista",
+              "lista": "tipo_tuberia"
+            },
+            {
+              "id": "diametro",
+              "label": "Diámetro de tubería",
+              "tipo": "number",
+              "unidad": "mm"
+            },
+            {
+              "id": "lote_tuberia",
+              "label": "Lote (tubería)"
+            },
+            {
+              "id": "tipo_geotextil",
+              "label": "Tipo de geotextil utilizado"
+            },
+            {
+              "id": "lote_geotextil",
+              "label": "Lote (geotextil)"
+            },
+            {
+              "id": "longitud",
+              "label": "Longitud",
+              "tipo": "number",
+              "unidad": "m"
+            },
+            {
+              "id": "pendiente",
+              "label": "Pendiente",
+              "tipo": "number",
+              "unidad": "%"
+            },
+            {
+              "id": "prog_inicial",
+              "label": "Prog. inicial"
+            },
+            {
+              "id": "prog_final",
+              "label": "Prog. final"
+            },
+            {
+              "id": "turno",
+              "label": "Turno",
+              "tipo": "radio",
+              "opciones": [
+                "Día",
+                "Noche"
+              ],
+              "requerido": true
+            }
+          ]
+        }
+      ],
+      "conformidad": {
+        "pregunta": "¿La instalación del dren es conforme?"
+      },
+      "adjuntos": [
+        {
+          "id": "reporte_topografico",
+          "label": "Reporte Topográfico",
+          "tipo_adjunto": "topografia"
+        },
+        {
+          "id": "plano_utm",
+          "label": "Plano topográfico con coordenadas UTM",
+          "tipo_adjunto": "plano"
+        }
+      ]
+    }
+  },
+  {
+    "codigo": "ST.CA.PC.008.F003",
+    "sigla": "AITHC",
+    "nombre": "Aceptación de Instalación de Tubería HDPE/CPT",
+    "categoria": "relleno",
+    "plantilla_firma": "STRACON_OPS_KP",
+    "qc_index": {
+      "hoja": "A. Tub CPT",
+      "columnas": [
+        [
+          "LONGITUD",
+          "c:longitud"
+        ],
+        [
+          "TIPO DE TUBERÍA",
+          "c:tipo_tuberia"
+        ],
+        [
+          "DIAMETRO DE TUBERÍA (mm)",
+          "c:diametro_sdr"
+        ],
+        [
+          "TURNO",
+          "turno"
+        ]
+      ]
+    },
+    "schema": {
+      "secciones": [
+        {
+          "tipo": "campos",
+          "titulo": "Características de la tubería",
+          "campos": [
+            {
+              "id": "tipo_tuberia",
+              "label": "Tipo de tubería",
+              "requerido": true,
+              "tipo": "lista",
+              "lista": "tipo_tuberia"
+            },
+            {
+              "id": "diametro_sdr",
+              "label": "Diámetro (mm) / SDR"
+            },
+            {
+              "id": "uniones_bridadas",
+              "label": "N° uniones bridadas",
+              "tipo": "number"
+            },
+            {
+              "id": "uniones_termofusionadas",
+              "label": "N° uniones termofusionadas",
+              "tipo": "number"
+            },
+            {
+              "id": "uniones_otras",
+              "label": "N° otras uniones",
+              "tipo": "number"
+            }
+          ]
+        },
+        {
+          "tipo": "checklist",
+          "titulo": "Aceptación de instalación de tubería HDPE",
+          "opciones": "SI_NO_NA",
+          "grupos": [
+            {
+              "items": [
+                {
+                  "id": "c1",
+                  "texto": "Se ha preparado y acondicionado la superficie de fundación"
+                },
+                {
+                  "id": "c2",
+                  "texto": "Se ha verificado la superficie de apoyo sobre dado(s)"
+                },
+                {
+                  "id": "c3",
+                  "texto": "El Pipe Bedding cumple con la granulometría y características especificadas"
+                },
+                {
+                  "id": "c4",
+                  "texto": "El Pipe Bedding no presenta material orgánico u otro material inadecuado"
+                },
+                {
+                  "id": "c5",
+                  "texto": "Se ha preparado y compactado el Pipe Bedding"
+                },
+                {
+                  "id": "c6",
+                  "texto": "Se ha verificado el montaje de las tuberías de acuerdo a los planos"
+                },
+                {
+                  "id": "c7",
+                  "texto": "Se ha verificado la pendiente, distribución y alineamiento de las tuberías",
+                  "ayuda": "Adjuntar reporte topográfico e indicar el N° de registro",
+                  "extra": {
+                    "label": "N° registro topográfico"
+                  }
+                },
+                {
+                  "id": "c8",
+                  "texto": "Se ha verificado el buen estado de las tuberías y accesorios"
+                },
+                {
+                  "id": "c9",
+                  "texto": "Se ha verificado mediante inspección visual todas las uniones no soldadas (conectadas por accesorios de presión o similares incluyendo sujetadores)",
+                  "extra": {
+                    "label": "Tipo de unión"
+                  }
+                },
+                {
+                  "id": "c10",
+                  "texto": "Se ha verificado mediante inspección visual todas las soldaduras (en particular del tubo de HDPE soldado a tope)"
+                },
+                {
+                  "id": "c11",
+                  "texto": "La prueba de ultrasonido se ha realizado siguiendo las recomendaciones de las EETT, siendo el resultado conforme",
+                  "extra": {
+                    "label": "Registro y fecha"
+                  }
+                },
+                {
+                  "id": "c12",
+                  "texto": "La prueba hidrostática se ha realizado siguiendo las recomendaciones de las EETT, siendo el resultado conforme",
+                  "extra": {
+                    "label": "Registro y fecha"
+                  }
+                },
+                {
+                  "id": "c13",
+                  "texto": "El Pipe Backfill cumple con la granulometría especificada"
+                },
+                {
+                  "id": "c14",
+                  "texto": "El Pipe Backfill no presenta material orgánico u otro material inadecuado"
+                },
+                {
+                  "id": "c15",
+                  "texto": "Se ha preparado y compactado el Pipe Backfill"
+                },
+                {
+                  "id": "c16",
+                  "texto": "Se ha verificado y liberado la instalación de geotextil"
+                },
+                {
+                  "id": "c17",
+                  "texto": "El material drenante (Coarse Drainage Gravel) cumple con las EETT"
+                },
+                {
+                  "id": "c18",
+                  "texto": "La cama de apoyo cumple con las EETT"
+                },
+                {
+                  "id": "c19",
+                  "texto": "La unión tipo espiga-campana se ha instalado correctamente (acoplado 3 corrugas y colocado el anillo de goma)",
+                  "extra": {
+                    "label": "Cant. de tuberías",
+                    "tipo": "number"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tipo": "campos",
+          "titulo": "Medición",
+          "campos": [
+            {
+              "id": "longitud",
+              "label": "Longitud",
+              "tipo": "number",
+              "unidad": "m"
+            },
+            {
+              "id": "prog_inicial",
+              "label": "Prog. inicial"
+            },
+            {
+              "id": "prog_final",
+              "label": "Prog. final"
+            },
+            {
+              "id": "turno",
+              "label": "Turno",
+              "tipo": "radio",
+              "opciones": [
+                "Día",
+                "Noche"
+              ],
+              "requerido": true
+            }
+          ]
+        },
+        {
+          "tipo": "tabla",
+          "id": "puntos",
+          "titulo": "Puntos",
+          "filas_min": 1,
+          "columnas": [
+            {
+              "id": "punto",
+              "label": "Punto"
+            },
+            {
+              "id": "norte",
+              "label": "Norte",
+              "tipo": "number"
+            },
+            {
+              "id": "este",
+              "label": "Este",
+              "tipo": "number"
+            },
+            {
+              "id": "cota",
+              "label": "Cota",
+              "tipo": "number"
+            }
+          ]
+        }
+      ],
+      "conformidad": {
+        "pregunta": "¿La instalación de tuberías HDPE/CPT es conforme?"
+      },
+      "adjuntos": [
+        {
+          "id": "reporte_topografico",
+          "label": "Reporte Topográfico",
+          "tipo_adjunto": "topografia"
+        },
+        {
+          "id": "croquis",
+          "label": "Croquis",
+          "tipo_adjunto": "croquis"
+        }
+      ]
+    }
+  }
+]

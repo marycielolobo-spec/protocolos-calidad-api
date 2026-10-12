@@ -1,0 +1,513 @@
+<title>Arquitecturas Protocolos de Calidad</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: documento técnico de una columna; diagramas de carriles a ancho completo con scroll propio; tablas comparativas al final. */
+:root {
+  --bg: #f6f7f5; --surface: #ffffff; --ink: #1c2420; --mute: #5d6862; --line: #d5dbd7;
+  --accent: #7a3fd6;           /* morado del diagrama original */
+  --ms: #7a3fd6; --ext: #1f7a52;
+  --lane-ops: #fbf3d6; --lane-cal: #dff3e7; --lane-sys: #e6ecf3; --lane-ext: #f9e1e4;
+  --lane-head: #e9ece9; --node: #ffffff; --node-line: #b9c2bc; --arrow: #46524b;
+  --chip: #eef1ef; --dot-ms: #b4479d; --dot-pa: #2f6fd1; --dot-sp: #138c8c; --dot-ad: #d0312d; --dot-sb: #2e9b62; --dot-web: #4a5560; --dot-mail: #c47b12;
+  --ok: #1f7a52; --warn: #a55d00;
+  --f-display: "Archivo", "Segoe UI", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #141917; --surface: #1c2320; --ink: #e5ebe7; --mute: #9aa69f; --line: #2f3a35;
+  --accent: #b58cf2; --ms: #b58cf2; --ext: #5fcb97;
+  --lane-ops: #2b2716; --lane-cal: #18291f; --lane-sys: #1b222b; --lane-ext: #2d1c20;
+  --lane-head: #222b27; --node: #232b28; --node-line: #44514a; --arrow: #a9b5ae; --chip: #2b3531;
+  --ok: #5fcb97; --warn: #e2a453; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #141917; --surface: #1c2320; --ink: #e5ebe7; --mute: #9aa69f; --line: #2f3a35;
+  --accent: #b58cf2; --ms: #b58cf2; --ext: #5fcb97;
+  --lane-ops: #2b2716; --lane-cal: #18291f; --lane-sys: #1b222b; --lane-ext: #2d1c20;
+  --lane-head: #222b27; --node: #232b28; --node-line: #44514a; --arrow: #a9b5ae; --chip: #2b3531;
+  --ok: #5fcb97; --warn: #e2a453; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--f-body); }
+.wrap { max-width: 1240px; margin: 0 auto; padding-inline: 20px; padding-block: 36px 64px; display: flex; flex-direction: column; gap: 44px; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(26px, 4vw, 36px); font-weight: 800; letter-spacing: -.01em; }
+h2 { font-size: 22px; font-weight: 800; }
+h3 { font-size: 16px; font-weight: 600; }
+p { margin: 0; max-width: 72ch; }
+.eyebrow { font: 500 12px var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--mute); }
+.intro { display: flex; flex-direction: column; gap: 10px; }
+.mute { color: var(--mute); }
+
+.opcion { display: flex; flex-direction: column; gap: 14px; }
+.banda { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; justify-content: space-between;
+  padding: 10px 16px; border-radius: 4px; color: #fff; }
+.banda.ms { background: var(--ms); } .banda.ext { background: var(--ext); }
+:root[data-theme="dark"] .banda, :root:not([data-theme="light"]) .banda { color: #fff; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .banda { color: #101412; } }
+:root[data-theme="dark"] .banda { color: #101412; }
+.banda h2 { font-size: 20px; }
+.banda span { font: 500 12px var(--f-mono); letter-spacing: .04em; }
+.nota { font-size: 14px; color: var(--mute); }
+.nota b { color: var(--ink); font-weight: 600; }
+
+.diagrama { overflow-x: auto; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
+.diagrama svg { display: block; min-width: 1080px; width: 100%; height: auto; }
+svg text { font-family: var(--f-body); fill: var(--ink); }
+.lane-ops { fill: var(--lane-ops); } .lane-cal { fill: var(--lane-cal); } .lane-sys { fill: var(--lane-sys); } .lane-ext { fill: var(--lane-ext); }
+.lane-head { fill: var(--lane-head); }
+.lane-sep { stroke: var(--line); stroke-width: 1; }
+.lane-name { font: 600 12.5px var(--f-body); }
+.lane-sub { font: 500 9.5px var(--f-mono); fill: var(--mute); letter-spacing: .03em; }
+.node { fill: var(--node); stroke: var(--node-line); stroke-width: 1.2; }
+.node-t { font: 600 11.5px var(--f-body); }
+.chip { fill: var(--chip); }
+.chip-t { font: 500 9.4px var(--f-mono); }
+.dot-ms { fill: var(--dot-ms); } .dot-pa { fill: var(--dot-pa); } .dot-sp { fill: var(--dot-sp); } .dot-ad { fill: var(--dot-ad); }
+.dot-sb { fill: var(--dot-sb); } .dot-web { fill: var(--dot-web); } .dot-mail { fill: var(--dot-mail); }
+.dec { fill: var(--accent); }
+.dec-t { font: 600 10.5px var(--f-body); fill: #fff; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .dec-t { fill: #141917; } }
+:root[data-theme="dark"] .dec-t { fill: #141917; }
+.edge { fill: none; stroke: var(--arrow); stroke-width: 1.4; }
+.edge.back { stroke-dasharray: 5 4; }
+.arrowhead { fill: var(--arrow); }
+.edge-l { font: 600 10px var(--f-body); fill: var(--mute); }
+.edge-bg { fill: var(--surface); }
+
+.leyenda { display: flex; flex-wrap: wrap; gap: 6px 18px; font: 500 12px var(--f-mono); color: var(--mute); }
+.leyenda i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
+
+.tabla-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 14px; }
+th, td { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+thead th { font: 500 12px var(--f-mono); letter-spacing: .05em; text-transform: uppercase; color: var(--mute); background: var(--lane-head); }
+thead th.ms { color: var(--ms); } thead th.ext { color: var(--ext); }
+tbody th { font-weight: 600; width: 19%; }
+tbody tr:last-child > * { border-bottom: none; }
+td small { display: block; color: var(--mute); font-size: 12.5px; margin-top: 2px; }
+.pill { display: inline-block; font: 500 11px var(--f-mono); padding: 1px 8px; border-radius: 99px; white-space: nowrap; }
+.pill.si { background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn); }
+.pill.no { background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok); }
+.pill.mid { background: var(--chip); color: var(--mute); }
+td.mejor { box-shadow: inset 3px 0 0 var(--ok); }
+
+.resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.resumen > div { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.resumen h3.ms { color: var(--ms); } .resumen h3.ext { color: var(--ext); }
+.resumen ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.limites { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.limites > div { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.limites strong { font: 800 26px var(--f-display); font-variant-numeric: tabular-nums; }
+.limites span:last-child { font-size: 13.5px; color: var(--mute); }
+.limites .lbl, .resumen .lbl { font: 500 11px var(--f-mono); text-transform: uppercase; letter-spacing: .06em; color: var(--mute); }
+.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pill.ms { background: color-mix(in srgb, var(--ms) 16%, transparent); color: var(--ms); }
+.pill.ext { background: color-mix(in srgb, var(--ext) 16%, transparent); color: var(--ext); }
+.calc { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 16px; }
+.calc label { display: flex; flex-direction: column; gap: 5px; font-size: 13px; color: var(--mute); min-width: 0; }
+.calc input, .calc select { font: 500 15px var(--f-body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 7px 10px; width: 100%; }
+.calc input:focus-visible, .calc select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+table.costos td { font-variant-numeric: tabular-nums; }
+table.costos tfoot th, table.costos tfoot td { font-weight: 700; border-top: 2px solid var(--line); border-bottom: none; }
+table.costos tfoot tr.anual td { font: 800 18px var(--f-display); }
+.fuentes { font-size: 13px; color: var(--mute); display: flex; flex-direction: column; gap: 4px; }
+.fuentes a { color: var(--accent); }
+.glosario { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 0 28px; }
+.glosario > div { padding: 12px 0; border-top: 1px solid var(--line); min-width: 0; }
+.glosario dt { font-weight: 600; }
+.glosario dd { margin: 4px 0 0; font-size: 14px; color: var(--mute); }
+</style>
+
+<div class="wrap">
+  <header class="intro">
+    <div class="eyebrow">Stracon · Mina Constancia · Control de Calidad</div>
+    <h1>Digitalización de protocolos: dos arquitecturas</h1>
+    <p class="mute">Mismo proceso de punta a punta en ambas opciones. Lo único que cambia es la herramienta que ejecuta cada paso, indicada en las etiquetas de cada caja. Alcance del MVP: protocolos de fundaciones, rellenos y vaciado de concreto (8 de 28 formatos).</p>
+    <div class="leyenda" aria-label="Leyenda de herramientas">
+      <span><i style="background:var(--dot-ms)"></i>Power Apps</span>
+      <span><i style="background:var(--dot-pa)"></i>Power Automate / Outlook</span>
+      <span><i style="background:var(--dot-sp)"></i>SharePoint</span>
+      <span><i style="background:var(--dot-ad)"></i>Adobe</span>
+      <span><i style="background:var(--dot-web)"></i>App web propia</span>
+      <span><i style="background:var(--dot-sb)"></i>Supabase</span>
+      <span><i style="background:var(--dot-mail)"></i>Correo</span>
+    </div>
+  </header>
+
+  <section class="opcion" aria-labelledby="o1">
+    <div class="banda ms"><h2 id="o1">Opción 1: Entorno Microsoft</h2><span>Power Apps · SharePoint · Power Automate · Adobe</span></div>
+    <p class="nota"><b>Knight Piésold no entra al tenant de Stracon</b>, así que todo lo suyo llega por correo y Acrobat Sign: recibe un sobre por protocolo y puede firmarlo o rechazarlo con motivo. La aprobación de modificaciones usa el rol “aprobador” de Acrobat Sign.</p>
+    <div class="diagrama"><svg id="svg-ms" role="img" aria-label="Diagrama de carriles de la opción Microsoft"></svg></div>
+  </section>
+
+  <section class="opcion" aria-labelledby="o2">
+    <div class="banda ext"><h2 id="o2">Opción 2: Fuera de Microsoft</h2><span>App web · Supabase · Adobe · GitLab</span></div>
+    <p class="nota"><b>Es la opción que ya está construida como MVP.</b> Knight Piésold abre un enlace personal sin cuenta ni licencia, revisa el paquete completo, acepta o rechaza cada protocolo con motivo y firma todos los aceptados en <b>un solo sobre</b> de Acrobat Sign.</p>
+    <div class="diagrama"><svg id="svg-ext" role="img" aria-label="Diagrama de carriles de la opción fuera de Microsoft"></svg></div>
+  </section>
+
+  <section class="opcion" aria-labelledby="comp">
+    <h2 id="comp">Sistemas necesarios por componente</h2>
+    <div class="tabla-wrap"><table>
+      <thead><tr><th>Componente</th><th class="ms">Opción 1 · Microsoft</th><th class="ext">Opción 2 · Fuera de Microsoft</th></tr></thead>
+      <tbody>
+        <tr><th>Formulario de protocolos</th><td>Power Apps (app de lienzo)<small>Una pantalla por formato o lógica condicional por tipo</small></td><td class="mejor">App web HTML/JS con motor único<small>Un formato nuevo = un JSON, sin pantallas nuevas (ya construido)</small></td></tr>
+        <tr><th>Base de datos</th><td>Listas de SharePoint<small>Límite de delegación con muchas filas; alternativa Dataverse (licencia aparte)</small></td><td>Supabase (PostgreSQL)<small>Reglas de negocio y bloqueo de aprobados dentro de la base</small></td></tr>
+        <tr><th>Adjuntos y PDF finales</th><td class="mejor">Bibliotecas de SharePoint / OneDrive<small>Incluido en M365, con mucho espacio</small></td><td>Supabase Storage<small>Plan gratis: 1 GB; con el volumen de PDF probablemente se necesite el plan Pro</small></td></tr>
+        <tr><th>Versionado (V0, V1, V2…)</th><td>Historial nativo de SharePoint + lista de versiones<small>Bloqueo de aprobados hay que forzarlo en la app y en permisos</small></td><td>Tabla de versiones + bloqueo en la base<small>Un aprobado no se puede editar ni desde fuera de la app</small></td></tr>
+        <tr><th>Automatización</th><td>Power Automate<small>Conector HTTP hacia Adobe es Premium</small></td><td>Supabase Edge Functions<small>Incluidas en el plan gratis</small></td></tr>
+        <tr><th>PDF del formulario y unión de adjuntos</th><td>Adobe PDF Services</td><td>Adobe PDF Services<small>Imágenes y separación del PDF firmado se hacen sin costo con pdf-lib</small></td></tr>
+        <tr><th>Firmas internas (Elaborado, Revisado)</th><td>Power Apps con imagen de firma y sello</td><td>App web con imagen de firma y sello</td></tr>
+        <tr><th>Revisión y firma de KP / Hudbay</th><td>Acrobat Sign, un sobre por protocolo<small>Rechaza con motivo desde el sobre; un paquete de 10 = 10 correos y 10 sobres</small></td><td class="mejor">Portal web por enlace + Acrobat Sign<small>Revisa el paquete, acepta/rechaza c/u con motivo; firma todo en 1 sobre</small></td></tr>
+        <tr><th>Aprobación de modificaciones</th><td>Acrobat Sign (rol aprobador) para KP + Power Automate para Jefatura</td><td>Portal web para KP + app para Jefatura</td></tr>
+        <tr><th>Notificaciones</th><td class="mejor">Outlook (incluido)</td><td>Resend (gratis hasta 3 000/mes)<small>o Microsoft Graph con una app registrada en el tenant</small></td></tr>
+        <tr><th>Inicio de sesión interno</th><td class="mejor">Cuentas Microsoft de Stracon (SSO)</td><td>Enlace al correo corporativo<small>Se puede conectar a Microsoft Entra ID para SSO</small></td></tr>
+        <tr><th>Publicación de la app</th><td>Incluida en Power Platform</td><td>Netlify o Vercel (gratis)</td></tr>
+        <tr><th>Código y control de cambios</th><td>Soluciones de Power Platform (exportar/importar)</td><td>GitLab (proyecto ya creado)</td></tr>
+        <tr><th>Habilidades del equipo</th><td>Low-code: Power Fx y flujos</td><td>JavaScript y SQL</td></tr>
+        <tr><th>Gobierno de TI</th><td class="mejor">Todo dentro del tenant, con políticas DLP de Stracon</td><td>Datos en un servicio externo<small>TI debe aprobar que los datos salgan del tenant</small></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="opcion" aria-labelledby="lic">
+    <h2 id="lic">Licencias y servicios de pago</h2>
+    <div class="tabla-wrap"><table>
+      <thead><tr><th>Servicio</th><th class="ms">Opción 1 · Microsoft</th><th class="ext">Opción 2 · Fuera de Microsoft</th></tr></thead>
+      <tbody>
+        <tr><th>Power Apps (usuarios)</th><td><span class="pill no">Incluido en M365</span><small>Si la app usa solo SharePoint y Outlook (conectores estándar), los usuarios no necesitan Power Apps Premium</small></td><td><span class="pill no">No aplica</span></td></tr>
+        <tr><th>Power Automate Premium o Process</th><td><span class="pill mid">1 o 2 licencias</span><small>Solo para el flujo que se conecta con Adobe (conector Premium): Premium para la cuenta dueña del flujo (US$ 15/mes) o licencia Process por flujo (US$ 150/mes). Confirmar con el partner de Microsoft la regla de “multiplexación”, que en algunos casos obliga a licenciar a quienes disparan el flujo</small></td><td><span class="pill no">No aplica</span></td></tr>
+        <tr><th>Microsoft 365 / SharePoint</th><td><span class="pill no">Ya incluido</span></td><td><span class="pill no">No aplica</span></td></tr>
+        <tr><th>Adobe PDF Services</th><td><span class="pill si">Requerido</span><small>500 operaciones/mes gratis ≈ 250 protocolos</small></td><td><span class="pill si">Requerido</span><small>500 operaciones/mes gratis ≈ 250 protocolos</small></td></tr>
+        <tr><th>Adobe Acrobat Sign</th><td><span class="pill si">Requerido</span><small>1 sobre por protocolo</small></td><td><span class="pill si">Requerido</span><small>1 sobre por paquete</small></td></tr>
+        <tr><th>Supabase</th><td><span class="pill no">No aplica</span></td><td><span class="pill mid">Gratis para piloto; Pro para producción</span><small>El plan gratis se pausa tras una semana sin uso y no tiene copias de seguridad automáticas</small></td></tr>
+        <tr><th>Hosting, correo y repositorio</th><td><span class="pill no">Incluido</span></td><td><span class="pill no">Gratis</span><small>Netlify/Vercel, Resend, GitLab</small></td></tr>
+      </tbody>
+    </table></div>
+    <p class="nota">Pendiente confirmar con gerencia si la aprobación de “contratar Adobe” cubre PDF Services y Acrobat Sign, que son productos y licencias distintos. Los precios de cada licencia deben cotizarse con Microsoft y Adobe.</p>
+  </section>
+
+  <section class="opcion" aria-labelledby="pre">
+    <h2 id="pre">Precios de lista</h2>
+    <p class="nota">Precios publicados por cada proveedor, en dólares, sin impuestos, consultados el 2 de octubre de 2026. Los de Microsoft son con pago anual.</p>
+    <div class="tabla-wrap"><table>
+      <thead><tr><th>Servicio</th><th>Plan</th><th>Precio</th><th>Incluye / notas</th><th>Opción</th></tr></thead>
+      <tbody>
+        <tr><th>Power Apps</th><td>Incluido en Microsoft 365</td><td class="num">US$ 0</td><td>Apps con conectores estándar (SharePoint, Outlook)</td><td><span class="pill ms">1</span></td></tr>
+        <tr><th>Power Apps Premium</th><td>Por usuario</td><td class="num">US$ 20 /usuario/mes</td><td>Solo si se necesitan conectores Premium en la app o Dataverse</td><td><span class="pill ms">1</span></td></tr>
+        <tr><th>Power Automate Premium</th><td>Por usuario</td><td class="num">US$ 15 /usuario/mes</td><td>Para la cuenta dueña del flujo que llama a Adobe</td><td><span class="pill ms">1</span></td></tr>
+        <tr><th>Power Automate Process</th><td>Por flujo (bot)</td><td class="num">US$ 150 /mes</td><td>Alternativa que licencia el flujo, sin importar quién lo dispare</td><td><span class="pill ms">1</span></td></tr>
+        <tr><th>Supabase Free</th><td>Gratis</td><td class="num">US$ 0</td><td>500 MB base de datos, 1 GB archivos, 5 GB de descarga; se pausa tras 1 semana sin uso; sin copias de seguridad</td><td><span class="pill ext">2</span></td></tr>
+        <tr><th>Supabase Pro</th><td>Por proyecto</td><td class="num">US$ 25 /mes</td><td>8 GB base de datos, 100 GB archivos (luego US$ 0.0213/GB), copias de seguridad 7 días, nunca se pausa</td><td><span class="pill ext">2</span></td></tr>
+        <tr><th>Netlify</th><td>Free</td><td class="num">US$ 0</td><td>300 créditos/mes; plan Personal US$ 9/mes si se excede</td><td><span class="pill ext">2</span></td></tr>
+        <tr><th>Resend (correo)</th><td>Free</td><td class="num">US$ 0</td><td>3 000 correos/mes, 100/día; plan Pro US$ 20/mes por 50 000</td><td><span class="pill ext">2</span></td></tr>
+        <tr><th>GitLab</th><td>Free</td><td class="num">US$ 0</td><td>Hasta 5 usuarios por grupo, 10 GiB; Premium US$ 29/usuario/mes</td><td><span class="pill ext">2</span></td></tr>
+        <tr><th>Adobe PDF Services</th><td>Pago por uso</td><td class="num">US$ 0.05 /transacción</td><td>500 transacciones gratis al mes. Por protocolo: 1 (HTML→PDF) + 1 por cada 50 páginas del PDF unido</td><td><span class="pill ms">1</span> <span class="pill ext">2</span></td></tr>
+        <tr><th>Adobe Acrobat Sign Solutions</th><td>Empresarial con API</td><td class="num">Cotización</td><td>Sin precio publicado; se cobra por sobre enviado. Referencias de mercado: US$ 0.10–1 por sobre en excedentes; contratos con API desde ~US$ 10 000/año</td><td><span class="pill ms">1</span> <span class="pill ext">2</span></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="opcion" aria-labelledby="calc">
+    <h2 id="calc">Costo estimado</h2>
+    <p class="nota">Cambia los supuestos y los totales se recalculan. El precio por sobre de Acrobat Sign es un <b>supuesto</b> mientras no exista la cotización de Adobe.</p>
+    <form class="calc" id="calc-form" autocomplete="off">
+      <label for="c-prot">Protocolos por mes<input id="c-prot" type="number" min="0" step="10" value="200"></label>
+      <label for="c-pag">Páginas por protocolo con adjuntos<input id="c-pag" type="number" min="1" step="1" value="15"></label>
+      <label for="c-paq">Protocolos por paquete a KP<input id="c-paq" type="number" min="1" step="1" value="10"></label>
+      <label for="c-mb">MB por protocolo (PDF + adjuntos)<input id="c-mb" type="number" min="0" step="0.5" value="5"></label>
+      <label for="c-sobre">Precio por sobre Acrobat Sign (US$, supuesto)<input id="c-sobre" type="number" min="0" step="0.1" value="1"></label>
+      <label for="c-ms">Licencia Microsoft para el flujo
+        <select id="c-ms">
+          <option value="premium">1 Power Automate Premium (US$ 15)</option>
+          <option value="process">1 Power Automate Process (US$ 150)</option>
+          <option value="usuarios">Premium para todos los usuarios (multiplexación)</option>
+        </select></label>
+      <label for="c-usr">Usuarios internos (solo para el último caso)<input id="c-usr" type="number" min="1" step="1" value="15"></label>
+    </form>
+    <div class="tabla-wrap"><table class="costos">
+      <thead><tr><th>Concepto</th><th class="ms">Opción 1 · Microsoft</th><th class="ext">Opción 2 · Fuera de Microsoft</th></tr></thead>
+      <tbody id="c-filas"></tbody>
+      <tfoot id="c-tot"></tfoot>
+    </table></div>
+    <p class="nota" id="c-nota"></p>
+  </section>
+
+  <section class="opcion" aria-labelledby="lim">
+    <h2 id="lim">Límites de los planes gratis</h2>
+    <p class="nota">El “500” del brief corresponde a Adobe, no a Supabase. Estos son los límites que importan:</p>
+    <div class="limites">
+      <div><span class="lbl">Adobe PDF Services</span><strong>500</strong><span>operaciones al mes ≈ 250 protocolos (2 por protocolo)</span></div>
+      <div><span class="lbl">Supabase · base de datos</span><strong>500 MB</strong><span>textos y respuestas de formularios: alcanza para miles de protocolos</span></div>
+      <div><span class="lbl">Supabase · archivos</span><strong>1 GB</strong><span>PDF, planos y fotos: es lo primero que se llena</span></div>
+      <div><span class="lbl">Supabase · plan gratis</span><strong>7 días</strong><span>sin uso y el proyecto se pausa; sin copias de seguridad automáticas</span></div>
+    </div>
+  </section>
+
+  <section class="opcion" aria-labelledby="seg">
+    <h2 id="seg">Seguridad de la Opción 2</h2>
+    <p class="nota">El código de la página web es visible para quien la abre, igual que en cualquier sitio web. <b>Los datos no están en la página:</b> están en Supabase, protegidos por estas capas, ya incluidas en el MVP.</p>
+    <div class="tabla-wrap"><table>
+      <thead><tr><th>Protección</th><th>Cómo funciona</th><th>Qué evita</th></tr></thead>
+      <tbody>
+        <tr><th>Inicio de sesión cerrado</th><td>Solo entran correos de Stracon dados de alta por el administrador; nadie puede crearse una cuenta</td><td>Que un extraño entre a la app</td></tr>
+        <tr><th>Reglas en la base de datos</th><td>La base valida cada consulta (Row Level Security): si no es un usuario interno activo, responde vacío</td><td>Que alguien que copie la página o su clave pública lea datos</td></tr>
+        <tr><th>Claves secretas en el servidor</th><td>Las claves de Adobe y de administración viven solo en las Edge Functions</td><td>Que una clave aparezca en el código visible</td></tr>
+        <tr><th>Enlace personal para KP</th><td>Código aleatorio de 256 bits; la base guarda solo su huella; vence a los 15 días; muestra solo ese paquete</td><td>Que KP vea otros protocolos o que alguien adivine un enlace</td></tr>
+        <tr><th>Archivos privados</th><td>PDF y planos en almacenamiento privado; se abren con enlaces temporales de 1 hora</td><td>Que un documento quede público en internet</td></tr>
+        <tr><th>Aprobados bloqueados</th><td>La base rechaza editar un protocolo aprobado; solo una solicitud aprobada por KP y Jefatura abre una nueva versión</td><td>Cambios a escondidas, incluso fuera de la app</td></tr>
+        <tr><th>Historial completo</th><td>Cada creación, firma, rechazo y cambio queda con usuario, fecha y versión</td><td>Pérdida de trazabilidad</td></tr>
+        <tr><th>Conexión cifrada</th><td>Todo viaja por HTTPS</td><td>Que se lea la información en el camino</td></tr>
+      </tbody>
+    </table></div>
+    <div class="resumen">
+      <div>
+        <h3 class="ms">Seguridad en la Opción 1</h3>
+        <p class="nota">La administra TI de Stracon dentro de su propio tenant: cuentas corporativas, doble factor, políticas DLP y respaldo de Microsoft. Los datos nunca salen de Microsoft 365.</p>
+      </div>
+      <div>
+        <h3 class="ext">Seguridad en la Opción 2</h3>
+        <p class="nota">Buena, pero <b>los datos salen del tenant</b>, lo que requiere visto bueno de TI. Supabase tiene certificación SOC 2 y permite alojar los datos en São Paulo, la región más cercana a Perú. Para acercarla al nivel de Microsoft: conectar el inicio de sesión a las cuentas de Stracon (Entra ID con doble factor) y usar el plan Pro por las copias de seguridad.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="opcion" aria-labelledby="glo">
+    <h2 id="glo">Glosario</h2>
+    <dl class="glosario">
+      <div><dt>HTML, CSS y JavaScript</dt><dd>Las tres capas de una página web: HTML es la estructura (títulos, casillas), CSS la apariencia (colores, tamaños) y JavaScript el comportamiento (validar, guardar, cambiar de pantalla).</dd></div>
+      <div><dt>Supabase</dt><dd>Servicio en internet que entrega listos una base de datos, un almacén de archivos y el inicio de sesión de usuarios.</dd></div>
+      <div><dt>Edge Function</dt><dd>Programa pequeño que corre en los servidores de Supabase, no en el navegador. Ahí van las tareas que usan claves secretas, como conectarse con Adobe.</dd></div>
+      <div><dt>Webhook</dt><dd>Aviso automático entre sistemas. Cuando KP termina de firmar, Adobe avisa a nuestro sistema y este marca el protocolo como aprobado sin intervención manual.</dd></div>
+      <div><dt>Conector estándar / Premium</dt><dd>En Power Platform, los conectores estándar (SharePoint, Outlook) vienen con Microsoft 365; los Premium (HTTP, Adobe, Dataverse) requieren licencia adicional.</dd></div>
+      <div><dt>Tenant</dt><dd>El espacio privado de Stracon en Microsoft 365, con sus usuarios, archivos y políticas. KP no tiene acceso a él.</dd></div>
+      <div><dt>RLS (Row Level Security)</dt><dd>Reglas dentro de la base de datos que deciden qué filas puede ver o modificar cada usuario.</dd></div>
+      <div><dt>Sobre (Acrobat Sign)</dt><dd>Envío de uno o varios documentos para firma; es la unidad que cobra Adobe.</dd></div>
+    </dl>
+  </section>
+
+  <section class="resumen" aria-label="Resumen">
+    <div>
+      <h3 class="ms">Opción 1 · Microsoft</h3>
+      <span class="lbl">A favor</span>
+      <ul><li>Todo dentro del tenant y de las políticas de TI.</li><li>Inicio de sesión con la cuenta de Stracon.</li><li>Almacenamiento y correo ya pagados.</li></ul>
+      <span class="lbl">En contra</span>
+      <ul><li>El flujo con Adobe necesita licencia Premium o Process (1 o 2, por confirmar con Microsoft).</li><li>KP recibe un sobre por protocolo; no ve el paquete completo.</li><li>Cada formato nuevo suele requerir trabajo en pantallas.</li></ul>
+    </div>
+    <div>
+      <h3 class="ext">Opción 2 · Fuera de Microsoft</h3>
+      <span class="lbl">A favor</span>
+      <ul><li>Solo se pagan las licencias de Adobe.</li><li>KP revisa el paquete completo y firma una sola vez.</li><li>MVP ya construido y probado en demo; formatos nuevos se agregan como JSON.</li></ul>
+      <span class="lbl">En contra</span>
+      <ul><li>Los datos quedan fuera del tenant: requiere visto bueno de TI.</li><li>Necesita alguien que mantenga código JavaScript y SQL.</li><li>Para producción conviene el plan Pro de Supabase (archivos, copias de seguridad, sin pausas).</li></ul>
+    </div>
+  </section>
+
+  <footer class="fuentes" aria-label="Fuentes de precios">
+    <strong>Fuentes de precios (consultadas el 2 de octubre de 2026)</strong>
+    <a href="https://supabase.com/pricing" target="_blank" rel="noopener">Supabase · Pricing</a>
+    <a href="https://www.microsoft.com/en-us/power-platform/products/power-apps/pricing" target="_blank" rel="noopener">Microsoft · Power Apps pricing</a>
+    <a href="https://www.microsoft.com/en-us/power-platform/products/power-automate/pricing" target="_blank" rel="noopener">Microsoft · Power Automate pricing</a>
+    <a href="https://developer.adobe.com/document-services/pricing/pay-as-you-go" target="_blank" rel="noopener">Adobe · PDF Services pago por uso</a>
+    <a href="https://developer.adobe.com/document-services/docs/overview/pdf-extract-api/dcserviceslicensing" target="_blank" rel="noopener">Adobe · Conteo de transacciones de PDF Services</a>
+    <a href="https://www.esignglobal.com/blog/does-adobe-sign-charge-api-calls-or-envelopes" target="_blank" rel="noopener">Referencia de mercado · Acrobat Sign por sobre (no oficial)</a>
+    <a href="https://resend.com/pricing" target="_blank" rel="noopener">Resend · Pricing</a>
+    <a href="https://www.netlify.com/pricing/" target="_blank" rel="noopener">Netlify · Pricing</a>
+    <a href="https://about.gitlab.com/pricing/" target="_blank" rel="noopener">GitLab · Pricing</a>
+  </footer>
+</div>
+
+<script>
+(() => {
+  const NS = 'http://www.w3.org/2000/svg';
+  const W = 1410, H = 618, LANE_H = 150, HEAD = 126, COL = 126;
+  const cx = (c) => HEAD + 66 + c * COL;
+  const cy = (l) => 75 + l * LANE_H;
+  const NW = 116, NH = 96, DW = 88, DH = 62;
+
+  const LANES = [
+    ['lane-ops', 'Operaciones', 'y Cadista'],
+    ['lane-cal', 'Calidad', 'Stracon'],
+    ['lane-sys', 'Automatización', 'del sistema'],
+    ['lane-ext', 'Knight Piésold', 'o Hudbay (externo)'],
+  ];
+
+  // Proceso común: [id, carril, columna, título (líneas), tipo]
+  const NODOS = [
+    ['o1', 0, 0, ['Solicitud de', 'protocolo']],
+    ['o2', 0, 1, ['Reporte y plano', 'topográfico']],
+    ['c1', 1, 1, ['Llenado del', 'protocolo']],
+    ['d1', 1, 2, ['¿Completo?'], 'dec'],
+    ['c3', 1, 3, ['Firmas internas', 'Elab. + Revisado']],
+    ['s1', 2, 4, ['PDF y unión', 'de adjuntos']],
+    ['s2', 2, 5, ['Envío y aviso', 'a KP']],
+    ['k1', 3, 5, ['Revisión de', 'protocolos']],
+    ['dk', 3, 6, ['¿Conforme?'], 'dec'],
+    ['c6', 1, 6, ['Corrección de', 'observaciones']],
+    ['k2', 3, 7, ['Firma', '“Aceptado por”']],
+    ['s3', 2, 7, ['Registro de firma', 'y PDF final']],
+    ['c7', 1, 8, ['Almacenamiento', 'y versiones']],
+    ['c8', 1, 9, ['Solicitud de', 'modificación']],
+    ['k3', 3, 9, ['Aprueba cambio', 'KP + Jefatura']],
+  ];
+
+  // Herramienta por paso: [texto, color]
+  const HERR = {
+    ms: {
+      o1: [['Power Apps', 'ms']], o2: [['Power Apps', 'ms'], ['SharePoint', 'sp']],
+      c1: [['Power Apps', 'ms']], c3: [['Power Apps', 'ms'], ['SharePoint', 'sp']],
+      s1: [['Power Automate', 'pa'], ['PDF Services', 'ad']], s2: [['Power Automate', 'pa'], ['Acrobat Sign', 'ad']],
+      k1: [['Outlook', 'pa'], ['Acrobat Sign', 'ad']], c6: [['Power Apps', 'ms']],
+      k2: [['Acrobat Sign', 'ad']], s3: [['Power Automate', 'pa']], c7: [['SharePoint', 'sp']],
+      c8: [['Power Apps', 'ms'], ['Power Automate', 'pa']], k3: [['Acrobat Sign', 'ad'], ['Outlook', 'pa']],
+    },
+    ext: {
+      o1: [['App web', 'web']], o2: [['App web', 'web'], ['Supabase', 'sb']],
+      c1: [['App web', 'web']], c3: [['App web', 'web'], ['Supabase', 'sb']],
+      s1: [['Edge Function', 'sb'], ['PDF Services', 'ad']], s2: [['Edge Function', 'sb'], ['Correo', 'mail']],
+      k1: [['Portal web', 'web'], ['Sin cuenta', 'web']], c6: [['App web', 'web']],
+      k2: [['Acrobat Sign', 'ad'], ['1 sobre/paquete', 'ad']], s3: [['Webhook', 'sb']], c7: [['Supabase', 'sb']],
+      c8: [['App web', 'web'], ['Correo', 'mail']], k3: [['Portal web', 'web'], ['App web', 'web']],
+    },
+  };
+
+  const el = (tag, attrs = {}, parent) => {
+    const n = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+    if (parent) parent.appendChild(n);
+    return n;
+  };
+  const texto = (s, attrs, parent) => { const t = el('text', attrs, parent); t.textContent = s; return t; };
+
+  function dibujar(svg, opcion) {
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    const defs = el('defs', {}, svg);
+    const m = el('marker', { id: `ah-${opcion}`, viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse' }, defs);
+    el('path', { d: 'M0,0 L10,5 L0,10 z', class: 'arrowhead' }, m);
+
+    LANES.forEach(([cls, a, b], i) => {
+      el('rect', { x: 0, y: i * LANE_H, width: W, height: LANE_H, class: cls }, svg);
+      el('rect', { x: 0, y: i * LANE_H, width: HEAD - 14, height: LANE_H, class: 'lane-head' }, svg);
+      texto(a, { x: 16, y: cy(i) - 2, class: 'lane-name' }, svg);
+      texto(b, { x: 16, y: cy(i) + 14, class: 'lane-sub' }, svg);
+      if (i) el('line', { x1: 0, x2: W, y1: i * LANE_H, y2: i * LANE_H, class: 'lane-sep' }, svg);
+    });
+
+    const P = {};
+    NODOS.forEach(([id, l, c, , tipo]) => {
+      const x = cx(c), y = cy(l), w = tipo === 'dec' ? DW : NW, h = tipo === 'dec' ? DH : NH;
+      P[id] = { x, y, L: [x - w / 2, y], R: [x + w / 2, y], T: [x, y - h / 2], B: [x, y + h / 2] };
+    });
+
+    const capaFlechas = el('g', {}, svg);
+    const capaNodos = el('g', {}, svg);
+
+    const flecha = (puntos, { back = false, label, lx, ly } = {}) => {
+      el('polyline', { points: puntos.map((p) => p.join(',')).join(' '), class: `edge${back ? ' back' : ''}`, 'marker-end': `url(#ah-${opcion})` }, capaFlechas);
+      if (label) {
+        const w = label.length * 5.4 + 8;
+        el('rect', { x: lx - w / 2, y: ly - 9, width: w, height: 13, rx: 2, class: 'edge-bg' }, capaFlechas);
+        texto(label, { x: lx, y: ly + 1, 'text-anchor': 'middle', class: 'edge-l' }, capaFlechas);
+      }
+    };
+    const codo = (a, b, o) => {
+      const [x1, y1] = P[a].R, [x2, y2] = P[b].L, mx = (x1 + x2) / 2;
+      flecha([[x1, y1], [mx, y1], [mx, y2], [x2, y2]], o);
+    };
+    const recta = (a, b, o) => flecha([P[a].R, P[b].L], o);
+
+    codo('o1', 'c1');
+    flecha([P.o2.B, P.c1.T]);
+    recta('c1', 'd1');
+    recta('d1', 'c3', { label: 'Sí', lx: (P.d1.R[0] + P.c3.L[0]) / 2, ly: P.d1.y - 8 });
+    flecha([P.d1.B, [P.d1.x, 288], [P.c1.x + 20, 288], [P.c1.x + 20, P.c1.B[1]]], { back: true, label: 'No', lx: (P.d1.x + P.c1.x) / 2 + 10, ly: 288 });
+    codo('c3', 's1');
+    recta('s1', 's2');
+    flecha([P.s2.B, P.k1.T]);
+    recta('k1', 'dk');
+    recta('dk', 'k2', { label: 'Sí', lx: (P.dk.R[0] + P.k2.L[0]) / 2, ly: P.dk.y - 8 });
+    flecha([P.dk.T, P.c6.B], { label: 'No, con motivo', lx: P.dk.x, ly: 2 * LANE_H + 12 });
+    flecha([P.c6.T, [P.c6.x, 162], [P.c3.x, 162], P.c3.T], { back: true, label: 'Reenvía a firma', lx: (P.c6.x + P.c3.x) / 2, ly: 162 });
+    flecha([P.k2.T, P.s3.B]);
+    codo('s3', 'c7');
+    recta('c7', 'c8', { label: 'Si hay cambio', lx: (P.c7.R[0] + P.c8.L[0]) / 2, ly: P.c7.y - 8 });
+    flecha([P.c8.B, P.k3.T]);
+    flecha([P.k3.B, [P.k3.x, 606], [P.c1.x - 20, 606], [P.c1.x - 20, P.c1.B[1]]], { back: true, label: 'Aprobado: abre nueva versión V+1', lx: (P.k3.x + P.c1.x) / 2, ly: 606 });
+
+    NODOS.forEach(([id, , , lineas, tipo]) => {
+      const p = P[id];
+      if (tipo === 'dec') {
+        el('polygon', { points: `${p.x},${p.T[1]} ${p.R[0]},${p.y} ${p.x},${p.B[1]} ${p.L[0]},${p.y}`, class: 'dec' }, capaNodos);
+        texto(lineas[0], { x: p.x, y: p.y + 4, 'text-anchor': 'middle', class: 'dec-t' }, capaNodos);
+        return;
+      }
+      el('rect', { x: p.L[0], y: p.T[1], width: NW, height: NH, rx: 6, class: 'node' }, capaNodos);
+      lineas.forEach((s, i) => texto(s, { x: p.x, y: p.T[1] + 18 + i * 14, 'text-anchor': 'middle', class: 'node-t' }, capaNodos));
+      (HERR[opcion][id] || []).forEach(([s, color], i) => {
+        const w = Math.min(s.length * 5.7 + 20, NW - 10), y = p.T[1] + 50 + i * 20;
+        el('rect', { x: p.x - w / 2, y, width: w, height: 16, rx: 8, class: 'chip' }, capaNodos);
+        el('circle', { cx: p.x - w / 2 + 8, cy: y + 8, r: 3.2, class: `dot-${color}` }, capaNodos);
+        texto(s, { x: p.x + 4, y: y + 11.5, 'text-anchor': 'middle', class: 'chip-t' }, capaNodos);
+      });
+    });
+  }
+
+  dibujar(document.getElementById('svg-ms'), 'ms');
+  dibujar(document.getElementById('svg-ext'), 'ext');
+})();
+
+// ---------- Calculadora de costos ----------
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const n = (id) => Math.max(0, Number($(id).value) || 0);
+  const usd = (v) => 'US$ ' + v.toLocaleString('es-PE', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 });
+  const ent = (v) => v.toLocaleString('es-PE');
+
+  function calcular() {
+    const prot = n('c-prot'), pag = Math.max(1, n('c-pag')), paq = Math.max(1, n('c-paq')), mb = n('c-mb'), sobre = n('c-sobre');
+    const lic = $('c-ms').value, usr = Math.max(1, n('c-usr'));
+    $('c-usr').closest('label').style.opacity = lic === 'usuarios' ? 1 : .5;
+
+    // Adobe PDF Services: 1 (HTML→PDF) + 1 por cada 50 páginas del PDF unido; 500 gratis al mes
+    const trans = prot * (1 + Math.ceil(pag / 50));
+    const pdf = Math.max(0, trans - 500) * 0.05;
+    // Acrobat Sign: un sobre por protocolo (Op. 1) vs uno por paquete (Op. 2)
+    const sobres1 = prot, sobres2 = Math.ceil(prot / paq);
+    const sign1 = sobres1 * sobre, sign2 = sobres2 * sobre;
+    // Microsoft
+    const ms = lic === 'premium' ? 15 : lic === 'process' ? 150 : usr * 20;
+    const msTxt = lic === 'premium' ? '1 Power Automate Premium' : lic === 'process' ? '1 Power Automate Process' : `${usr} × Power Apps Premium`;
+    // Supabase Pro: 100 GB incluidos; se estima el almacenamiento acumulado al cierre del primer año
+    const gbAnio = (prot * 12 * mb) / 1024;
+    const supa = 25 + Math.max(0, gbAnio - 100) * 0.0213;
+    // Correo: ~5 avisos por protocolo; Resend gratis hasta 3 000/mes y 100/día (22 días hábiles)
+    const correos = prot * 5;
+    const correo = correos > 3000 || correos / 22 > 100 ? 20 : 0;
+
+    const filas = [
+      ['Licencia Microsoft', `${usd(ms)}<small>${msTxt}</small>`, '—'],
+      ['Microsoft 365 / SharePoint / Outlook', 'US$ 0<small>Ya pagado</small>', '—'],
+      ['Supabase Pro', '—', `${usd(supa)}<small>≈ ${ent(Math.round(gbAnio))} GB de archivos al cierre del año 1 (100 GB incluidos)</small>`],
+      ['Hosting, correo y repositorio', 'US$ 0<small>Incluido</small>',
+        `${usd(correo)}<small>≈ ${ent(correos)} correos/mes ${correo ? '(supera el plan gratis de Resend)' : '(dentro del plan gratis)'}; Netlify y GitLab gratis</small>`],
+      ['Adobe PDF Services', `${usd(pdf)}<small>${ent(trans)} transacciones (500 gratis)</small>`, `${usd(pdf)}<small>${ent(trans)} transacciones (500 gratis)</small>`],
+      ['Adobe Acrobat Sign', `${usd(sign1)}<small>${ent(sobres1)} sobres (1 por protocolo)</small>`, `${usd(sign2)}<small>${ent(sobres2)} sobres (1 por paquete)</small>`],
+    ];
+    const t1 = ms + pdf + sign1, t2 = supa + correo + pdf + sign2;
+    $('c-filas').innerHTML = filas.map(([a, b, c]) => `<tr><th>${a}</th><td>${b}</td><td>${c}</td></tr>`).join('');
+    $('c-tot').innerHTML = `<tr><th>Total mensual</th><td>${usd(t1)}</td><td>${usd(t2)}</td></tr>
+      <tr class="anual"><th>Total anual</th><td>${usd(t1 * 12)}</td><td>${usd(t2 * 12)}</td></tr>`;
+    const dif = (t1 - t2) * 12;
+    $('c-nota').innerHTML = dif === 0 ? 'Con estos supuestos ambas opciones cuestan lo mismo.'
+      : `Con estos supuestos, la <b>Opción ${dif > 0 ? 2 : 1}</b> cuesta <b>${usd(Math.abs(dif))} menos al año</b>. ` +
+        `La mayor diferencia suele venir de Acrobat Sign: ${ent(sobres1)} sobres al mes en la Opción 1 frente a ${ent(sobres2)} en la Opción 2. ` +
+        'No incluye el costo de desarrollo ni de mantenimiento, ni un posible contrato anual mínimo de Adobe.';
+  }
+  $('calc-form').addEventListener('input', calcular);
+  $('calc-form').addEventListener('submit', (e) => e.preventDefault());
+  calcular();
+})();
+</script>

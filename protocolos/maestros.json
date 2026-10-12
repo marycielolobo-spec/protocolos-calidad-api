@@ -1,0 +1,60 @@
+{
+  "_nota": "Datos maestros para los desplegables. Se cargan al arrancar el servidor. Fuente: LP Ent y Est V1.xlsx (ST.CA.PE.005.F001) y QC Index RC. Los planos de TMF y MIS están pendientes (los enviará Calidad).",
+  "proyecto": {
+    "nombre": "MINA CONSTANCIA",
+    "nombre_contrato": "HBM-CC-001115-26 Control de Calidad QC – Laboratorio 2026 - 2030",
+    "cliente": "HUDBAY PERÚ S.A.C.",
+    "codigo_contrato": "10203002",
+    "proyecto_distribucion": "CONSTANCIA CIVIL – PRESA"
+  },
+  "entregables": [
+    {
+      "codigo": "TMF", "nombre": "Depósito de relaves (TMF) - Etapa XI",
+      "estructuras": [
+        { "codigo": "DDR", "nombre": "Dique del depósito de relaves (TMF) - ESTE" },
+        { "codigo": "DDR", "nombre": "Dique del depósito de relaves (TMF) - OESTE" },
+        { "codigo": "DDR", "nombre": "Dique del depósito de relaves (TMF) - VALLE 1" },
+        { "codigo": "DDR", "nombre": "Dique del depósito de relaves (TMF) - VALLE 2" },
+        { "codigo": "DDR", "nombre": "Dique del depósito de relaves (TMF) - VALLE 3" },
+        { "codigo": "DDR", "nombre": "Dique del depósito de relaves (TMF) - VALLE 4" }
+      ],
+      "planos": ["8832 Rev.0", "8834 Rev.0"]
+    },
+    {
+      "codigo": "RC", "nombre": "Reservorio Cunahuiri",
+      "estructuras": [
+        { "codigo": "RC", "nombre": "Reservorio Cunahuiri" }
+      ],
+      "planos": [
+        "LI 201.557.64.1110 (Rev. 4)", "LI 201.557.64.1120 (Rev. 3)", "LI 201.557.64.1130 (Rev. 1)",
+        "LI 201.557.64.1170 (Rev. 2)", "LI 201.557.64.1200 (Rev. 3)", "LI 201.557.64.1220 (Rev. 1)",
+        "LI 201.557.64.1300 (Rev. 3)", "LI 201.557.64.1310 (Rev. 3)", "LI 201.557.64.1320 (Rev. 3)",
+        "LI 201.557.64.1330 (Rev. 3)", "LI 201.557.64.1345 (Rev. 3)", "LI 201.557.64.1350 (Rev. 3)",
+        "LI 201.557.64.1355 (Rev. 3)", "LI 201.557.64.1360 (Rev. 3)", "LI 201.557.64.1365 (Rev. 3)"
+      ]
+    },
+    {
+      "codigo": "MIS", "nombre": "Misceláneos",
+      "estructuras": [
+        { "codigo": "PCG1", "nombre": "Plataforma CG01" }
+      ],
+      "planos": []
+    }
+  ],
+  "listas": {
+    "turno": ["Día", "Noche"],
+    "material_relleno": [
+      "Relleno Común", "Relleno Estructural", "Relleno Propio", "Relleno de Roca Estructural D2",
+      "Material de Baja Permeabilidad", "Material de Baja Resistencia Controlada", "Superficie de Terreno Nivelado",
+      "Enrocado", "Capa de Rodadura", "Over de 4\" a 6\"", "Gravas de 1 ½\" a 4\"", "Empedrado"
+    ],
+    "equipo_medicion": [
+      "GPS TRIMBLE R980 6423739165", "GPS TRIMBLE R12 6025F00988", "GPS TRIMBLE R12 6025F00995",
+      "GPS TRIMBLE R8-4 5318436342"
+    ],
+    "tipo_tuberia": ["HDPE perforada CPT 6\"", "HDPE perforada CPT 12\"", "Tubo Sólido HDPE CPT (S)"],
+    "fc": ["10 MPa", "14 MPa", "21 MPa", "28 MPa"],
+    "asentamiento": ["3\" - 6\""],
+    "equipo_compactacion": ["Camión minero CAT 793F cargado", "Rodillo vibratorio"]
+  }
+}

@@ -1,0 +1,9 @@
+# Archivos binarios: Git no debe tocarles los saltos de línea
+*.pdf  binary
+*.xlsx binary
+*.png  binary
+*.jpg  binary
+*.pptx binary
+*.ai   binary
+# Scripts de Windows siempre con CRLF
+*.bat  text eol=crlf

@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.ejemplo
+.venv/
+__pycache__/
+datos/
+supabase/.temp/
+supabase/.branches/
+node_modules/
+.claude/
+# Copia vieja de la versión Supabase (no subir)
+protocolos-calidad/

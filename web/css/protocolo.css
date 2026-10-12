@@ -1,0 +1,120 @@
+/* Hoja del protocolo en pantalla (el PDF lo dibuja el servidor en Python con el mismo orden).
+   Siempre "papel" blanco, también en modo oscuro. */
+.protocolo {
+  --p-ink: #1d232b; --p-mute: #5b6673; --p-line: #c9d0d8; --p-head: #eef2f6; --p-accent: #15284b; --p-marca: #f42534;
+  --p-ok: #1d7a46; --p-bad: #b42318; --p-err-bg: #fff1f0;
+  background: #fff; color: var(--p-ink);
+  font: 13px/1.4 "Segoe UI", Roboto, Arial, sans-serif;
+  max-width: 1000px; margin: 0 auto; padding: 24px; border-radius: 8px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / .12);
+}
+.protocolo h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; margin: 0 0 8px; color: var(--p-accent); }
+.protocolo section { margin-top: 20px; }
+
+.enc { display: grid; grid-template-columns: 140px 1fr 200px; border: 1px solid var(--p-line); }
+.enc > div { padding: 8px 10px; }
+.enc-l { display: flex; align-items: center; justify-content: center; border-right: 1px solid var(--p-line); }
+.logo img { max-width: 120px; height: auto; display: block; }
+.enc-c { text-align: center; font-size: 11px; color: var(--p-mute); }
+.enc-c h2 { margin: 4px 0 0; font-size: 15px; color: var(--p-ink); }
+.enc-r { border-left: 1px solid var(--p-line); font-size: 12px; }
+
+.cabecera, .campos { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr)); gap: 10px 16px; }
+.campo { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.campo.full { grid-column: 1 / -1; }
+.campo > label { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--p-mute); letter-spacing: .03em; }
+.ctl { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; }
+.unidad { color: var(--p-mute); font-size: 12px; }
+
+.protocolo input[type=text], .protocolo input[type=number], .protocolo input[type=date], .protocolo input[type=time],
+.protocolo input[type=datetime-local],
+.protocolo select, .protocolo textarea {
+  font: inherit; color: inherit; background: #fff; border: 1px solid var(--p-line); border-radius: 6px;
+  padding: 6px 8px; min-width: 0; flex: 1; width: 100%;
+}
+.protocolo textarea { resize: vertical; }
+.protocolo input:focus, .protocolo select:focus, .protocolo textarea:focus { outline: 2px solid var(--p-accent); outline-offset: -1px; border-color: transparent; }
+.ro { display: inline-block; min-height: 1.4em; border-bottom: 1px dotted var(--p-line); flex: 1; white-space: pre-wrap; }
+
+.tabla-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid var(--p-line); padding: 5px 6px; vertical-align: top; text-align: left; }
+th { background: var(--p-head); font-size: 11px; text-transform: uppercase; }
+.checklist .n { width: 34px; text-align: center; }
+.checklist .op { width: 46px; text-align: center; vertical-align: middle; }
+.checklist .obs { width: 26%; }
+.checklist tr.grupo td { background: var(--p-head); font-weight: 700; font-size: 12px; }
+.extra { margin-top: 4px; display: flex; gap: 6px; align-items: center; }
+.extra small { color: var(--p-mute); white-space: nowrap; }
+.ayuda { font-size: 11px; color: var(--p-mute); font-style: italic; }
+.leyenda { font-size: 11px; color: var(--p-mute); margin: 4px 0 8px; }
+
+/* Botones de respuesta SI/NO/NA - grandes para tablet en campo */
+.op-btn { display: inline-flex; align-items: center; justify-content: center; min-width: 38px; min-height: 32px;
+  border: 1px solid var(--p-line); border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600; user-select: none; }
+.op-btn input { position: absolute; opacity: 0; pointer-events: none; }
+.op-btn:hover { border-color: var(--p-accent); }
+.op-btn.on { background: var(--p-ok); border-color: var(--p-ok); color: #fff; }
+.op-btn.neg.on { background: var(--p-bad); border-color: var(--p-bad); }
+.op-btn:has(input:focus-visible) { outline: 2px solid var(--p-accent); outline-offset: 1px; }
+
+.radios { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.chk { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border: 1px solid var(--p-line); border-radius: 999px; cursor: pointer; }
+.chk.on { border-color: var(--p-accent); background: #e8f1fb; }
+.ro .chk, .protocolo.ro .chk { border: none; padding: 0 8px 0 0; background: none; }
+/* Planos de referencia: varios por protocolo, filtrados por entregable */
+.planos { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; max-height: 180px; overflow-y: auto; }
+.plano { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border: 1px solid var(--p-line); border-radius: 6px; font-size: 12px; cursor: pointer; }
+.plano.on { border-color: var(--p-accent); background: #e8f1fb; }
+.muted-ctl { color: var(--p-mute); font-size: 12px; font-style: italic; }
+.num { display: inline-flex; align-items: center; gap: 4px; min-width: 160px; flex: 0 1 220px; }
+
+.grid .acc { width: 34px; text-align: center; }
+.btn-ico { border: none; background: none; font-size: 18px; cursor: pointer; color: var(--p-mute); }
+.btn-sec { margin-top: 6px; font: inherit; font-size: 12px; background: none; border: 1px dashed var(--p-line); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+
+.conformidad label { color: var(--p-ink); font-size: 12px; }
+.err { background: var(--p-err-bg) !important; outline: 2px solid var(--p-bad); outline-offset: -2px; }
+
+.firmas { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--p-line); margin-top: 24px; }
+.firma { padding: 8px 10px; border-right: 1px solid var(--p-line); }
+.firma:last-child { border-right: none; }
+.firma .rol { font-weight: 700; font-size: 11px; text-transform: uppercase; }
+.firma .caja { height: 80px; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--p-line); margin: 6px 0; position: relative; }
+.firma .caja img { max-height: 76px; max-width: 100%; }
+.firma .firmado { color: var(--p-ok); font-size: 11px; }
+.firma .rechazado { color: var(--p-bad); font-weight: 600; }
+.firma .tag { position: absolute; inset: 4px; color: #fff; font-size: 8px; }   /* text tag invisible para Acrobat Sign */
+.firma dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 6px; margin: 0; font-size: 12px; }
+.firma dt { color: var(--p-mute); }
+.firma dd { margin: 0; }
+
+@media screen and (max-width: 720px) {   /* solo pantalla: al imprimir / PDF siempre va el formato de tabla */
+  .protocolo { padding: 12px; border-radius: 0; }
+  .enc { grid-template-columns: 1fr; }
+  .enc-l, .enc-r { border: none; }
+  .firmas { grid-template-columns: 1fr; }
+  .firma { border-right: none; border-bottom: 1px solid var(--p-line); }
+  /* Checklist como tarjetas: descripción arriba, respuestas en fila, observación abajo */
+  .checklist, .checklist tbody { display: block; }
+  .checklist tr:has(th) { display: none; }
+  .checklist tr[data-item] { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0; border-bottom: 1px solid var(--p-line); }
+  .checklist tr[data-item] td { border: none; padding: 0; }
+  .checklist tr.grupo { display: block; }
+  .checklist tr.grupo td { display: block; border: none; }
+  .checklist td.n { width: 24px; font-weight: 600; }
+  .checklist tr[data-item] td:nth-child(2) { flex: 1 1 calc(100% - 32px); }
+  .checklist td.op { flex: 1 1 0; width: auto; }
+  .checklist td.op .op-btn { width: 100%; min-height: 40px; }
+  .checklist td.obs, .checklist td[colspan] { flex: 1 1 100%; width: auto; }
+  .protocolo.ro .checklist td.op { display: none; }
+  .protocolo.ro .checklist td.op.on { display: block; flex: 0 0 100%; color: var(--p-ok); font-weight: 600; }
+  .protocolo.ro .checklist td.op.on::before { content: "Respuesta: " attr(data-op) " "; }
+}
+
+@media print {
+  @page { size: A4; margin: 12mm; }
+  .protocolo { box-shadow: none; padding: 0; max-width: none; font-size: 10.5px; }
+  .btn-sec, .btn-ico, .grid .acc, .slot-adjunto { display: none !important; }
+  tr, .firmas { break-inside: avoid; }
+}

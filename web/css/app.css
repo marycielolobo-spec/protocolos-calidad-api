@@ -1,0 +1,130 @@
+:root {
+  --bg: #f3f5f8; --surface: #fff; --ink: #1d232b; --mute: #5b6673; --line: #dde3ea;
+  --accent: #15284b; --accent-ink: #fff; --ok: #1d7a46; --warn: #a15c00; --bad: #b42318;
+  --chip: #eef2f6; --shadow: 0 1px 3px rgb(0 0 0 / .1);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12161b; --surface: #1b2129; --ink: #e6ebf0; --mute: #9aa5b1; --line: #2c3540;
+    --accent: #5aa2ee; --accent-ink: #0b1420; --ok: #4cc283; --warn: #e5a54b; --bad: #f2786c; --chip: #252d37;
+    --shadow: none; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12161b; --surface: #1b2129; --ink: #e6ebf0; --mute: #9aa5b1; --line: #2c3540;
+  --accent: #5aa2ee; --accent-ink: #0b1420; --ok: #4cc283; --warn: #e5a54b; --bad: #f2786c; --chip: #252d37;
+  --shadow: none; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 "Segoe UI", Roboto, system-ui, sans-serif; }
+a { color: var(--accent); }
+h1 { font-size: 20px; margin: 0 0 16px; }
+h2 { font-size: 15px; margin: 0 0 10px; }
+
+.top { position: sticky; top: 0; z-index: 10; display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
+  padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.top .marca { font-weight: 700; }
+.top .marca small { color: var(--mute); font-weight: 400; }
+.top nav { display: flex; gap: 4px; }
+.top nav a { text-decoration: none; color: var(--ink); padding: 6px 10px; border-radius: 6px; }
+.top nav a.on { background: var(--chip); font-weight: 600; }
+.top .usuario { margin-left: auto; display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--mute); }
+.demo-banner { background: #fff4d6; color: #5c4300; padding: 6px 16px; font-size: 12px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .demo-banner { background: #3a3014; color: #f3d98b; } }
+
+main { padding: 20px 16px 60px; max-width: 1400px; margin: 0 auto; }
+
+.btn { font: inherit; border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 7px 14px;
+  border-radius: 6px; cursor: pointer; white-space: nowrap; }
+.btn:hover { border-color: var(--accent); }
+.btn.pri { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.peligro { color: var(--bad); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+select, input, textarea { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; }
+
+.chip { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; background: var(--chip); white-space: nowrap; }
+.chip.aprobado { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+.chip.observado { background: color-mix(in srgb, var(--bad) 15%, transparent); color: var(--bad); }
+.chip.en_revision, .chip.en_firma_externa, .chip.firma_interna, .chip.listo_revision { background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); }
+.chip.en_modificacion { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; box-shadow: var(--shadow); }
+.filtros { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.filtros input { min-width: 240px; flex: 1; }
+
+table.lista { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.lista th, .lista td { padding: 9px 12px; border-bottom: 1px solid var(--line); text-align: left; }
+.lista th { font-size: 12px; color: var(--mute); font-weight: 600; background: var(--chip); }
+.lista tr[data-href] { cursor: pointer; }
+.lista tr[data-href]:hover td { background: var(--chip); }
+.lista-wrap { overflow-x: auto; }
+.vacio { text-align: center; padding: 40px; color: var(--mute); }
+
+.grid-tipos { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.tipo-card { text-align: left; cursor: pointer; font: inherit; color: inherit; }
+.tipo-card:hover { border-color: var(--accent); }
+.tipo-card .cod { font-size: 12px; color: var(--mute); }
+.tipo-card .cat { float: right; }
+
+.editor { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+.lateral { position: sticky; top: 70px; display: flex; flex-direction: column; gap: 12px; max-height: calc(100vh - 90px); overflow: auto; }
+@media (max-width: 1100px) { .editor { grid-template-columns: minmax(0, 1fr); } .lateral { position: static; max-height: none; } }
+.barra { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.barra .guardado { color: var(--mute); font-size: 12px; margin-right: auto; }
+
+.firma-item { display: flex; flex-direction: column; gap: 4px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.firma-item:last-child { border-bottom: none; }
+.firma-item .acciones { display: flex; gap: 6px; margin-top: 4px; }
+.muted { color: var(--mute); font-size: 12px; }
+.lista-simple { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+.lista-simple li { padding: 6px 0; border-bottom: 1px solid var(--line); }
+.lista-simple li:last-child { border-bottom: none; }
+.errores { background: color-mix(in srgb, var(--bad) 10%, var(--surface)); border: 1px solid var(--bad); border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; font-size: 13px; }
+.errores ul { margin: 6px 0 0; padding-left: 18px; }
+
+.slot-adjunto:not(:empty) { margin-top: 6px; }
+.adj-lista { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; }
+.adj-file { background: var(--chip); color: var(--ink); padding: 3px 8px; border-radius: 6px; display: inline-flex; gap: 6px; align-items: center; }
+.adj-file button { border: none; background: none; cursor: pointer; color: var(--bad); }
+.adj-subir { font-size: 12px; cursor: pointer; color: var(--accent); }
+.adj-subir input { display: none; }
+
+dialog { border: 1px solid var(--line); border-radius: 10px; padding: 20px; background: var(--surface); color: var(--ink); width: min(560px, calc(100vw - 32px)); }
+dialog::backdrop { background: rgb(0 0 0 / .4); }
+dialog .fila { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+dialog .fila label { font-size: 12px; font-weight: 600; color: var(--mute); }
+dialog .pie { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+dialog textarea { width: 100%; min-height: 80px; }
+
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg);
+  padding: 10px 18px; border-radius: 8px; z-index: 100; max-width: calc(100vw - 32px); }
+.toast.err { background: var(--bad); color: #fff; }
+
+/* Portal externo */
+.rev-item { margin-bottom: 16px; }
+.rev-head { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.rev-head .titulo { flex: 1; min-width: 200px; }
+.rev-decision { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start; margin-top: 10px; }
+.rev-decision textarea { flex: 1; min-width: 220px; min-height: 40px; }
+details > summary { cursor: pointer; color: var(--accent); margin-top: 8px; }
+details[open] > summary { margin-bottom: 10px; }
+
+@media (max-width: 640px) {
+  .top .usuario { margin-left: 0; width: 100%; }
+  .filtros input { min-width: 0; }
+}
+
+/* Portal externo: firma dibujada y código al correo */
+.firma-externa h2 { margin-top: 0; }
+.pad { width: 100%; max-width: 460px; height: 150px; border: 1px dashed var(--line, #c9d0d8); border-radius: 8px; background: #fff; touch-action: none; display: block; cursor: crosshair; }
+.pad-pie { display: flex; justify-content: space-between; align-items: center; max-width: 460px; margin: 6px 0 12px; }
+.fila-codigo { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
+.fila-codigo input { font: inherit; padding: 8px 10px; border: 1px solid var(--line, #c9d0d8); border-radius: 6px; width: 12em; letter-spacing: .2em; }
+.filtros.qc { margin-top: -4px; }
+.nreg { font-size: 12px; }
+/* Marca STRACON (Brandbook ST.MK.MA.001): azul #15284B, rojo #F42534 */
+.marca .iso { height: 22px; width: auto; vertical-align: -5px; margin-right: 8px; }
+.btn.pri { background: #15284b; border-color: #15284b; }
+.top { border-bottom: 3px solid #f42534; }
