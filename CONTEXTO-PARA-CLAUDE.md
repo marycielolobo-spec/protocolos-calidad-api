@@ -30,6 +30,15 @@ La subcarpeta `protocolos-calidad\` dentro del proyecto es una copia vieja (Supa
 - Fuentes recibidas: QC INDEX RC.xlsx, LP Ent y Est V1.xlsx, REG 133/134 (Capa de Relleno TMF Este),
   RTF 23/24 (Terreno de Fundación TMF Oeste), ST.CA.PG.001.F007 (Hoja de Cargo) — en Descargas de la usuaria.
 
+## Repositorios (GitHub, cuenta marycielolobo-spec)
+- API Python: `protocolos-calidad-api` → carpeta `C:\Users\maryc\protocolos-calidad`.
+- Pantallas (Lovable, React/TanStack Start): `quality-standards-hub` → copia local `C:\Users\maryc\quality-standards-hub`.
+  Lovable sincroniza con GitHub: no reescribir historia (sin force push). `src/api/adaptador.ts` traduce API ↔ pantallas;
+  `src/api/datos-reales.ts` se regenera con `pruebas/exportar_para_lovable.py`. Modo simulado si no hay `VITE_API_URL`.
+  Probado de punta a punta contra la API real (13 oct 2026). El puerto 5173 de la PC está ocupado por otro programa.
+- Correo: Microsoft 365 rechaza SMTP con contraseña (535 5.7.3) para datos.constancia@stracon.com → usar Gmail del
+  sistema (la usuaria pedirá un chip corporativo para la verificación en 2 pasos). TI no verifica dominio para Resend.
+
 ## Pendientes de información (de Calidad)
 Siglas de Topográfico y Drenes (hoy RT e ID provisionales), lista de planos por entregable (TMF, MIS), áreas de
 distribución de la Hoja de Cargo, usuarios reales y firmantes externos, firmas/sellos escaneados, logo,
