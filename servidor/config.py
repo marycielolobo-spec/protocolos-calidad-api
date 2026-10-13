@@ -31,6 +31,12 @@ def _leer_env():
 _leer_env()
 
 APP_URL = os.environ.get("APP_URL", "http://localhost:8000").rstrip("/")
+# Página del portal externo (KP / Hudbay). Con las pantallas de Lovable: <url del frontend>/revision
+URL_PORTAL = os.environ.get("URL_PORTAL", f"{APP_URL}/revision.html").rstrip("/")
+# Direcciones del frontend (Lovable) que pueden usar la API, separadas por coma. "*" = cualquiera (solo demo)
+CORS_ORIGENES = [o.strip() for o in os.environ.get("CORS_ORIGENES", "*").split(",") if o.strip()]
+# Dirección de las pantallas internas (enlaces "Abrir protocolo" de los correos)
+URL_APP = os.environ.get("URL_APP", f"{APP_URL}/#").rstrip("/")
 
 # Correo. Sin datos = se guarda en la "bandeja de salida" de la app (modo demo).
 # Opción 1 (recomendada para el piloto): cuenta de Gmail del sistema con contraseña de aplicación.

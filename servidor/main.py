@@ -6,6 +6,7 @@ Documentación automática de la API:  http://localhost:8000/docs
 from typing import Any
 
 from fastapi import FastAPI, File, Form, Header, Request, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -15,6 +16,10 @@ from .logica import ErrorNegocio
 
 app = FastAPI(title="Protocolos de Calidad — Stracon / Constancia", version="2.0")
 db.iniciar()
+
+# Las pantallas de Lovable viven en otra dirección: el navegador necesita este permiso para llamar a la API
+app.add_middleware(CORSMiddleware, allow_origins=config.CORS_ORIGENES, allow_methods=["*"],
+                   allow_headers=["*"], expose_headers=["Content-Disposition"])
 
 
 @app.exception_handler(ErrorNegocio)

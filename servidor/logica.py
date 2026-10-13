@@ -209,7 +209,7 @@ def obtener(id_):
     cambios = db.filas("select * from cambio where instancia_id = ? order by created_at desc", id_)
     for c in cambios:
         p = db.fila("select token_demo from paquete where cambio_id = ?", c["id"])
-        c["enlace_demo"] = f"revision.html?t={p['token_demo']}" if p and p["token_demo"] else None
+        c["enlace_demo"] = f"{config.URL_PORTAL}?t={p['token_demo']}" if p and p["token_demo"] else None
     tipo = _tipo(inst["tipo_id"])
     return {
         "inst": inst,
@@ -524,7 +524,7 @@ def crear_paquete(yo, ids, contacto_id):
             "Puede aceptar o rechazar cada uno (todo rechazo requiere motivo). Para registrar su respuesta le enviaremos "
             "un código a este correo y firmará en la misma página. Se incluye la Hoja de Cargo de los documentos entregados.",
             f"No necesita cuenta ni licencia. El enlace es personal y vence en {config.DIAS_VENCE_ENLACE} días.",
-        ], {"texto": "Revisar protocolos", "url": f"{config.APP_URL}/revision.html?t={token}"})
+        ], {"texto": "Revisar protocolos", "url": f"{config.URL_PORTAL}?t={token}"})
     return {"codigo": codigo, "correo": contacto["email"]}
 
 
@@ -560,7 +560,7 @@ def paquetes():
     ps = db.filas("select * from paquete where es_cambio = 0 order by created_at desc limit 50")
     for p in ps:
         p["items"] = db.filas("select * from paquete_item where paquete_id = ?", p["id"])
-        p["enlace_demo"] = f"revision.html?t={p['token_demo']}" if p["token_demo"] else None
+        p["enlace_demo"] = f"{config.URL_PORTAL}?t={p['token_demo']}" if p["token_demo"] else None
         p["firmado_recepcion"] = bool(p["recibido_at"])
         for k in ("token_hash", "token_demo", "otp_hash", "otp_expira", "recibido_firma"):
             p.pop(k, None)
@@ -766,9 +766,9 @@ def solicitar_cambio(yo, id_, motivo, descripcion, contacto_id):
                  f"Motivo: {motivo.strip()}", f"Cambios previstos: {descripcion or '—'}",
                  f"Si la Jefatura de Calidad y la supervisión aprueban, se abrirá la versión V{i['version_actual'] + 1}."]
         correo.enviar([contacto["email"]], asunto, texto,
-                      {"texto": "Revisar solicitud", "url": f"{config.APP_URL}/revision.html?t={token}"})
+                      {"texto": "Revisar solicitud", "url": f"{config.URL_PORTAL}?t={token}"})
         if jefes:
-            correo.enviar(jefes, asunto, texto, {"texto": "Abrir protocolo", "url": f"{config.APP_URL}/#/p/{id_}"})
+            correo.enviar(jefes, asunto, texto, {"texto": "Abrir protocolo", "url": f"{config.URL_APP}/p/{id_}"})
     return {"correo": contacto["email"]}
 
 
