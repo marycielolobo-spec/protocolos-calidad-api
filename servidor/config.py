@@ -32,10 +32,16 @@ _leer_env()
 
 APP_URL = os.environ.get("APP_URL", "http://localhost:8000").rstrip("/")
 
-# Correo (Resend). Vacío = se guarda en la "bandeja de salida" de la app.
+# Correo. Sin datos = se guarda en la "bandeja de salida" de la app (modo demo).
+# Opción 1 (recomendada para el piloto): cuenta de Gmail del sistema con contraseña de aplicación.
+SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USER = os.environ.get("SMTP_USER", "")
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "").replace(" ", "")   # Google la muestra en grupos de 4
+# Opción 2: Resend (necesita un dominio verificado).
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
-MAIL_FROM = os.environ.get("MAIL_FROM", "Calidad Stracon <calidad@example.com>")
-CORREO_REAL = bool(RESEND_API_KEY)
+MAIL_FROM = os.environ.get("MAIL_FROM", "Protocolos de Calidad STRACON <calidad@example.com>")
+CORREO_REAL = bool((SMTP_USER and SMTP_PASSWORD) or RESEND_API_KEY)
 
 DIAS_VENCE_ENLACE = 15          # enlace del portal para KP / Hudbay
 MINUTOS_VENCE_CODIGO = 10       # código de firma enviado al correo
