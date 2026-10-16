@@ -21,7 +21,7 @@ from pathlib import Path
 
 from PIL import Image as PilImage
 
-from . import config, correo, db, pdf, reglas
+from . import almacen, config, correo, db, pdf, reglas
 
 ESTADOS = {
     "borrador": "Borrador", "firma_interna": "Firma interna", "listo_revision": "Listo para revisión",
@@ -31,6 +31,12 @@ ESTADOS = {
 EDITABLE = {"borrador", "observado", "en_modificacion"}
 ORDEN_ADJUNTOS = ["topografia", "plano", "croquis", "laboratorio", "calidad", "otro"]
 ROL_TITULO = {"elaborado": "Elaborado por", "revisado_aprobado": "Revisado / Aprobado por", "aceptado": "Aceptado por"}
+
+# Roles de las personas (perfil.rol). es_admin es aparte: da de alta usuarios y firmantes externos.
+ROLES = {"supervisor_calidad": "Calidad (elabora protocolos)", "jefe_calidad": "Jefatura de Calidad",
+         "operaciones": "Operaciones (revisa y aprueba)", "topografia": "Topografía / Oficina Técnica"}
+CALIDAD = {"supervisor_calidad", "jefe_calidad"}
+TOPOGRAFICO = "ST.CA.PC.001.F001"         # el único formato que llena Topografía
 
 
 class ErrorNegocio(Exception):
@@ -82,7 +88,7 @@ def _sello_svg(nombre):
 
 
 def _ruta_sello(perfil_id):
-    return config.ARCHIVOS / "sellos" / f"{perfil_id}.png"
+    return f"sellos/{perfil_id}.png"
 
 
 def _firmas(instancia_id, version):
@@ -100,8 +106,10 @@ def _imagen_firma(f):
     """PNG de la firma para el PDF."""
     if f["canal"] == "externo":
         return _png_de_data_url(f["firma_imagen"]) if f.get("firma_imagen") else None
-    sello = _ruta_sello(f["perfil_id"])
-    return sello.read_bytes() if sello.exists() else pdf.sello_demo_png(f["nombre"] or "")
+    try:
+        return almacen.leer(_ruta_sello(f["perfil_id"]))
+    except almacen.ArchivoNoEncontrado:                # sin firma escaneada todavía: sello de ejemplo
+        return pdf.sello_demo_png(f["nombre"] or "")
 
 
 def _firmas_pdf(instancia_id, version):
@@ -130,6 +138,21 @@ def _validar_firma_dibujada(url):
         raise ErrorNegocio("La firma no es una imagen válida")
 
 
+def _exigir(condicion, mensaje):
+    if not condicion:
+        raise ErrorNegocio(mensaje, 403)
+
+
+def _puede_elaborar(yo, tipo_id):
+    """Calidad llena cualquier formato; Topografía, solo el Reporte Topográfico; Operaciones solo revisa y firma."""
+    return yo["rol"] in CALIDAD or (yo["rol"] == "topografia" and tipo_id == TOPOGRAFICO)
+
+
+def _exigir_elaborar(yo, tipo_id):
+    _exigir(_puede_elaborar(yo, tipo_id), "Su rol no permite llenar este formato"
+            + (" (Topografía solo llena el Reporte Topográfico)" if yo["rol"] == "topografia" else ""))
+
+
 def _contacto(id_):
     c = db.fila("select * from contacto where id = ? and activo = 1", id_)
     if not c:
@@ -152,18 +175,14 @@ def _vencido(iso):
 
 
 def _guardar_archivo(carpeta, nombre, datos):
-    ruta = Path(carpeta) / nombre
-    destino = config.ARCHIVOS / ruta
-    destino.parent.mkdir(parents=True, exist_ok=True)
-    destino.write_bytes(datos)
-    return ruta.as_posix()
+    return almacen.guardar(f"{carpeta}/{nombre}", datos)
 
 
 # ---------------------------------------------------------------------------
 # Consultas
 # ---------------------------------------------------------------------------
 def personas():
-    return {"perfiles": db.filas("select * from perfil where activo = 1 order by rowid"),
+    return {"perfiles": db.filas("select id, nombre, cargo, email, empresa, rol, es_admin from perfil where activo = 1 order by rowid"),
             "contactos": db.filas("select * from contacto where activo = 1 order by rowid")}
 
 
@@ -231,6 +250,7 @@ def obtener(id_):
 def crear(yo, tipo_id, origen, solicitud):
     if not db.fila("select id from tipo where id = ? and activo = 1", tipo_id):
         raise ErrorNegocio("Tipo de protocolo no válido")
+    _exigir_elaborar(yo, tipo_id)
     if origen not in ("solicitud_operaciones", "backlog"):
         raise ErrorNegocio("Origen no válido")
     v = reglas.valor_vacio(proyecto())
@@ -248,6 +268,7 @@ def guardar_valor(yo, id_, valor):
     with db.transaccion():
         i = _inst(id_)
         _editable(i)
+        _exigir_elaborar(yo, i["tipo_id"])
         p = proyecto()
         cabecera = dict(valor.get("cabecera") or {})
         # Lo que pone el sistema no se puede cambiar desde la pantalla
@@ -269,6 +290,7 @@ def subir_adjunto(yo, id_, nombre, datos, tipo, ref_schema):
     with db.transaccion():
         i = _inst(id_)
         _editable(i)
+        _exigir_elaborar(yo, i["tipo_id"])
         seguro = re.sub(r"[^\w.-]+", "_", nombre)
         ruta = _guardar_archivo(f"adjuntos/{id_}/V{i['version_actual']}", f"{db.nuevo_id()}-{seguro}", datos)
         a = {"id": db.nuevo_id(), "instancia_id": id_, "version": i["version_actual"], "tipo": tipo,
@@ -285,17 +307,18 @@ def quitar_adjunto(yo, adj_id):
             raise ErrorNegocio("Adjunto no encontrado", 404)
         i = _inst(a["instancia_id"])
         _editable(i)
+        _exigir_elaborar(yo, i["tipo_id"])
         if a["version"] != i["version_actual"]:
             raise ErrorNegocio("Ese adjunto pertenece a una versión cerrada")
         db.ejecutar("delete from adjunto where id = ?", adj_id)
-    (config.ARCHIVOS / a["ruta"]).unlink(missing_ok=True)
+    almacen.borrar(a["ruta"])
 
 
 def archivo_adjunto(adj_id):
     a = db.fila("select * from adjunto where id = ?", adj_id)
     if not a:
         raise ErrorNegocio("Adjunto no encontrado", 404)
-    return config.ARCHIVOS / a["ruta"], a["nombre_archivo"]
+    return a["ruta"], a["nombre_archivo"]
 
 
 # ---------------------------------------------------------------------------
@@ -305,6 +328,7 @@ def enviar_a_firma(yo, id_, firmantes):
     with db.transaccion():
         i = _inst(id_)
         _editable(i)
+        _exigir_elaborar(yo, i["tipo_id"])
         t = _tipo(i["tipo_id"])
         adjuntos = db.filas("select * from adjunto where instancia_id = ? and version = ?", id_, i["version_actual"])
         errores = reglas.validar(t, i, maestros())
@@ -429,7 +453,7 @@ def generar_pdf(id_, final=False):
     adjuntos.sort(key=lambda a: (ORDEN_ADJUNTOS.index(a["tipo"]) if a["tipo"] in ORDEN_ADJUNTOS else 99, a["created_at"]))
     partes = [formulario]
     for a in adjuntos:
-        datos = (config.ARCHIVOS / a["ruta"]).read_bytes()
+        datos = almacen.leer(a["ruta"])
         partes.append(pdf.imagen_a_pdf(datos) if pdf.es_imagen(a["nombre_archivo"]) else datos)
     contenido = pdf.unir(partes)
     carpeta = f"pdfs/{id_}/V{n}"
@@ -476,13 +500,14 @@ def ruta_pdf(id_, numero=None):
     v = db.fila("select * from version where id = ?", v["id"])
     ruta = v["pdf_firmado"] or v["pdf_revision"]
     sufijo = "" if v["pdf_firmado"] else "_para-revision"
-    return config.ARCHIVOS / ruta, f"{i['correlativo']}_V{numero}{sufijo}.pdf"
+    return ruta, f"{i['correlativo']}_V{numero}{sufijo}.pdf"
 
 
 # ---------------------------------------------------------------------------
 # Paquete para el tercero (KP / Hudbay) y Hoja de Cargo
 # ---------------------------------------------------------------------------
 def crear_paquete(yo, ids, contacto_id):
+    _exigir(yo["rol"] in CALIDAD, "Solo Calidad envía paquetes a revisión")
     if not ids:
         raise ErrorNegocio("Seleccione al menos un protocolo")
     contacto = _contacto(contacto_id)
@@ -553,7 +578,7 @@ def ruta_hoja_cargo(paq_id):
     p = db.fila("select * from paquete where id = ?", paq_id)
     if not p or not p["hoja_cargo"]:
         raise ErrorNegocio("Hoja de cargo no encontrada", 404)
-    return config.ARCHIVOS / p["hoja_cargo"], f"{p['codigo']}_hoja-de-cargo.pdf"
+    return p["hoja_cargo"], f"{p['codigo']}_hoja-de-cargo.pdf"
 
 
 def paquetes():
@@ -737,6 +762,7 @@ def revision_decidir(token, decisiones, codigo, firma_imagen, contexto=None):
 # Control de cambios (modificar un protocolo aprobado → V+1)
 # ---------------------------------------------------------------------------
 def solicitar_cambio(yo, id_, motivo, descripcion, contacto_id):
+    _exigir(yo["rol"] in CALIDAD, "Solo Calidad solicita modificaciones")
     if not (motivo or "").strip():
         raise ErrorNegocio("El motivo es obligatorio")
     contacto = _contacto(contacto_id)
@@ -759,7 +785,7 @@ def solicitar_cambio(yo, id_, motivo, descripcion, contacto_id):
                                 "es_cambio": 1, "cambio_id": cambio_id, "expira_at": _vence(dias=config.DIAS_VENCE_ENLACE),
                                 "created_at": db.ahora()})
         db.insertar("paquete_item", {"paquete_id": paq_id, "instancia_id": id_, "version": i["version_actual"]})
-        jefes = [p["email"] for p in db.filas("select email from perfil where rol in ('jefe_calidad', 'admin') and activo = 1")]
+        jefes = [p["email"] for p in db.filas("select email from perfil where rol = 'jefe_calidad' and activo = 1")]
         _evento(id_, "cambio_solicitado", {"motivo": motivo.strip(), "a": [contacto["email"], *jefes]}, yo["email"])
         asunto = f"[Stracon] Solicitud de modificación de {i['correlativo']}"
         texto = [f"{yo['nombre']} solicita modificar el protocolo aprobado {i['correlativo']} (V{i['version_actual']}).",
@@ -773,8 +799,7 @@ def solicitar_cambio(yo, id_, motivo, descripcion, contacto_id):
 
 
 def decidir_cambio_calidad(yo, cambio_id, decision, motivo):
-    if yo["rol"] not in ("jefe_calidad", "admin"):
-        raise ErrorNegocio("Solo la Jefatura de Calidad decide", 403)
+    _exigir(yo["rol"] == "jefe_calidad", "Solo la Jefatura de Calidad decide")
     if decision not in ("aceptado", "rechazado"):
         raise ErrorNegocio("Decisión inválida")
     if decision == "rechazado" and not (motivo or "").strip():
@@ -830,3 +855,139 @@ def _aplicar_cambio(cambio_id):
 
 def correos():
     return db.filas("select * from correo order by created_at desc, rowid desc limit 100")
+
+
+# ---------------------------------------------------------------------------
+# Usuarios (personal Stracon) y firmantes externos (KP / Hudbay)
+# ---------------------------------------------------------------------------
+_CAMPOS_PERFIL = "id, nombre, cargo, email, empresa, rol, es_admin, debe_cambiar_clave, tiene_sello, activo"
+
+
+def _exigir_admin(yo):
+    _exigir(yo.get("es_admin"), "Solo un administrador puede gestionar usuarios")
+
+
+def _validar_rol(rol):
+    if rol not in ROLES:
+        raise ErrorNegocio(f"Rol no válido. Opciones: {', '.join(ROLES)}")
+
+
+def _normalizar_email(email):
+    email = (email or "").strip().lower()
+    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+        raise ErrorNegocio("Correo no válido")
+    return email
+
+
+def usuarios(yo):
+    _exigir_admin(yo)
+    return {"usuarios": db.filas(f"select {_CAMPOS_PERFIL} from perfil order by activo desc, nombre"),
+            "contactos": db.filas("select * from contacto order by activo desc, empresa, nombre"), "roles": ROLES}
+
+
+def crear_usuario(yo, datos):
+    """Alta de una persona de Stracon. Devuelve la contraseña temporal (se muestra una sola vez al administrador)."""
+    _exigir_admin(yo)
+    from . import auth
+    nombre = (datos.get("nombre") or "").strip()
+    if not nombre:
+        raise ErrorNegocio("El nombre es obligatorio")
+    email = _normalizar_email(datos.get("email"))
+    rol = datos.get("rol") or "supervisor_calidad"
+    _validar_rol(rol)
+    if db.fila("select id from perfil where email = ?", email):
+        raise ErrorNegocio("Ya existe un usuario con ese correo")
+    clave = auth.clave_temporal()
+    uid = auth.crear_usuario(email, clave, nombre) if config.SUPABASE else db.nuevo_id()
+    with db.transaccion():
+        db.insertar("perfil", {"id": uid, "nombre": nombre, "cargo": (datos.get("cargo") or "").strip(), "email": email,
+                               "empresa": datos.get("empresa") or "Stracon", "rol": rol,
+                               "es_admin": int(bool(datos.get("es_admin"))), "debe_cambiar_clave": 1})
+    return {"usuario": db.fila(f"select {_CAMPOS_PERFIL} from perfil where id = ?", uid),
+            "clave_temporal": clave if config.SUPABASE else None}
+
+
+def editar_usuario(yo, uid, cambios):
+    _exigir_admin(yo)
+    u = db.fila("select * from perfil where id = ?", uid)
+    if not u:
+        raise ErrorNegocio("Usuario no encontrado", 404)
+    datos = {}
+    for k in ("nombre", "cargo"):
+        if k in cambios and cambios[k] is not None:
+            datos[k] = str(cambios[k]).strip()
+    if cambios.get("rol") is not None:
+        _validar_rol(cambios["rol"])
+        datos["rol"] = cambios["rol"]
+    for k in ("es_admin", "activo"):
+        if cambios.get(k) is not None:
+            datos[k] = int(bool(cambios[k]))
+    if uid == yo["id"] and (datos.get("es_admin") == 0 or datos.get("activo") == 0):
+        raise ErrorNegocio("No puede quitarse a sí mismo el acceso de administrador")
+    if not datos:
+        return u
+    if "activo" in datos and datos["activo"] != u["activo"] and config.SUPABASE:
+        from . import auth
+        auth.bloquear(uid, not datos["activo"])
+    db.actualizar("perfil", uid, datos)
+    return db.fila(f"select {_CAMPOS_PERFIL} from perfil where id = ?", uid)
+
+
+def restablecer_clave(yo, uid):
+    _exigir_admin(yo)
+    if not db.fila("select id from perfil where id = ?", uid):
+        raise ErrorNegocio("Usuario no encontrado", 404)
+    from . import auth
+    clave = auth.clave_temporal()
+    if config.SUPABASE:
+        auth.fijar_clave(uid, clave)
+    db.actualizar("perfil", uid, {"debe_cambiar_clave": 1})
+    return {"clave_temporal": clave if config.SUPABASE else None}
+
+
+def subir_sello(yo, uid, datos):
+    """Firma y sello escaneados de un firmante interno (la persona misma o un administrador). Se guarda como PNG."""
+    _exigir(uid == yo["id"] or yo.get("es_admin"), "Solo puede cambiar su propia firma")
+    if not db.fila("select id from perfil where id = ?", uid):
+        raise ErrorNegocio("Usuario no encontrado", 404)
+    if len(datos) > 3_000_000:
+        raise ErrorNegocio("La imagen es demasiado grande (máximo 3 MB)")
+    try:
+        img = PilImage.open(io.BytesIO(datos))
+        img.load()
+    except Exception:
+        raise ErrorNegocio("La firma debe ser una imagen PNG o JPG")
+    img.thumbnail((900, 360))
+    salida = io.BytesIO()
+    img.convert("RGBA").save(salida, "PNG")
+    almacen.guardar(_ruta_sello(uid), salida.getvalue(), "image/png")
+    db.actualizar("perfil", uid, {"tiene_sello": 1})
+    return {"ok": True}
+
+
+def sello(uid):
+    try:
+        return almacen.leer(_ruta_sello(uid))
+    except almacen.ArchivoNoEncontrado:
+        raise ErrorNegocio("Sin firma escaneada", 404)
+
+
+def guardar_contacto(yo, datos, cid=None):
+    """Alta o edición de un firmante externo (KP / Hudbay). No tiene cuenta: firma por enlace + código."""
+    _exigir_admin(yo)
+    valores = {"nombre": (datos.get("nombre") or "").strip(), "cargo": (datos.get("cargo") or "").strip(),
+               "empresa": (datos.get("empresa") or "").strip()}
+    if "email" in datos or not cid:
+        valores["email"] = _normalizar_email(datos.get("email"))
+    if datos.get("activo") is not None:
+        valores["activo"] = int(bool(datos["activo"]))
+    if not cid:
+        if not valores["nombre"] or not valores["empresa"]:
+            raise ErrorNegocio("Nombre y empresa son obligatorios")
+        if db.fila("select id from contacto where email = ?", valores["email"]):
+            raise ErrorNegocio("Ya existe un firmante con ese correo")
+        cid = db.nuevo_id()
+        db.insertar("contacto", {"id": cid, **valores})
+    else:
+        db.actualizar("contacto", cid, {k: v for k, v in valores.items() if v != "" or k == "cargo"})
+    return db.fila("select * from contacto where id = ?", cid)

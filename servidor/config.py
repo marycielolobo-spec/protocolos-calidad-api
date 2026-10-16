@@ -49,6 +49,15 @@ RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 MAIL_FROM = os.environ.get("MAIL_FROM", "Protocolos de Calidad STRACON <calidad@example.com>")
 CORREO_REAL = bool((SMTP_USER and SMTP_PASSWORD) or RESEND_API_KEY)
 
+# Supabase. Sin estos datos el sistema usa SQLite y archivos locales, con el selector "Actuar como" (demo).
+# DATABASE_URL → base de datos PostgreSQL · SUPABASE_URL + claves → archivos (Storage) e inicio de sesión (Auth).
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
+SUPABASE_PUBLISHABLE_KEY = os.environ.get("SUPABASE_PUBLISHABLE_KEY", "")
+SUPABASE_SECRET_KEY = os.environ.get("SUPABASE_SECRET_KEY", "")
+SUPABASE = bool(SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY and SUPABASE_SECRET_KEY)
+BUCKET = os.environ.get("SUPABASE_BUCKET", "protocolos")
+
 DIAS_VENCE_ENLACE = 15          # enlace del portal para KP / Hudbay
 MINUTOS_VENCE_CODIGO = 10       # código de firma enviado al correo
 INTENTOS_CODIGO = 5

@@ -15,7 +15,8 @@ from pathlib import Path
 
 warnings.filterwarnings("ignore")
 os.environ["PROTOCOLOS_DATOS"] = tempfile.mkdtemp(prefix="protocolos-demo-")
-for k in ("SMTP_USER", "SMTP_PASSWORD", "RESEND_API_KEY"):      # correos siempre simulados
+for k in ("SMTP_USER", "SMTP_PASSWORD", "RESEND_API_KEY", "DATABASE_URL", "SUPABASE_URL",
+          "SUPABASE_PUBLISHABLE_KEY", "SUPABASE_SECRET_KEY"):      # siempre local, correos simulados
     os.environ[k] = ""
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 

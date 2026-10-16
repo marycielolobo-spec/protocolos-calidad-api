@@ -13,6 +13,10 @@ from pathlib import Path
 
 warnings.filterwarnings("ignore")
 os.environ["PROTOCOLOS_DATOS"] = tempfile.mkdtemp(prefix="protocolos-prueba-")
+# Siempre local: base SQLite temporal, archivos locales, correos simulados (aunque .env tenga Supabase o Gmail)
+for _k in ("DATABASE_URL", "SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY", "SUPABASE_SECRET_KEY",
+           "SMTP_USER", "SMTP_PASSWORD", "RESEND_API_KEY"):
+    os.environ[_k] = ""
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from fastapi.testclient import TestClient  # noqa: E402
@@ -35,7 +39,7 @@ def ok(cond, msg):
 
 
 def api(metodo, ruta, usuario=None, esperado=200, **kw):
-    r = c.request(metodo, f"/api{ruta}", headers={"X-Usuario": usuario or ""}, **kw)
+    r = c.request(metodo, f"/api{ruta}", headers={"X-Usuario": usuario} if usuario else {}, **kw)
     if r.status_code != esperado:
         raise AssertionError(f"{metodo} {ruta}: esperado {esperado}, llegó {r.status_code} {r.text[:300]}")
     return r.json() if "json" in r.headers.get("content-type", "") else r
@@ -84,6 +88,7 @@ def ultimo_codigo():
 print("Flujo completo de protocolos")
 ses = api("GET", "/sesion")
 sup, jefe, ops = (p["id"] for p in ses["perfiles"])
+c.headers["X-Usuario"] = sup        # consultas sin usuario explícito: como el supervisor de Calidad
 kp = ses["contactos"][0]["id"]
 tipos = api("GET", "/tipos")
 ok(len(tipos) == 8 and all(t["sigla"] for t in tipos), "8 formatos cargados, cada uno con su sigla")
@@ -235,5 +240,35 @@ a = api("GET", f"/protocolos/{A}")
 ok(a["inst"]["estado"] == "en_modificacion" and a["inst"]["version_actual"] == 1, "KP (con código) + Jefatura aprueban → se abre V1")
 ok(a["inst"]["correlativo"] == "ATF-RC-001", "La V1 conserva el mismo correlativo")
 ok(c.get(f"/api/protocolos/{A}/pdf?version=0").status_code == 200, "V0 y su PDF firmado se conservan")
+
+# Permisos por rol
+r = api("POST", "/protocolos", ops, 403, json={"tipo_id": fund["id"], "origen": "backlog"})
+ok("rol" in r["error"], "Operaciones no puede crear protocolos (solo revisa y firma)")
+api("GET", "/usuarios", sup, 403)
+ok(True, "Solo un administrador ve la gestión de usuarios")
+r = api("POST", "/usuarios", jefe, json={"nombre": "Topógrafo de prueba", "email": "topo@demo.local", "cargo": "Técnico",
+                                          "rol": "topografia"})
+ok(r["usuario"]["rol"] == "topografia" and r["usuario"]["debe_cambiar_clave"] == 1,
+   "El administrador da de alta un usuario (debe cambiar su clave)")
+topo = r["usuario"]["id"]
+api("POST", "/usuarios", jefe, 400, json={"nombre": "Repetido", "email": "topo@demo.local", "rol": "topografia"})
+ok(True, "No se repiten correos de usuario")
+topografico = next(t_ for t_ in tipos if t_["codigo"] == "ST.CA.PC.001.F001")
+api("POST", "/protocolos", topo, json={"tipo_id": topografico["id"], "origen": "solicitud_operaciones"})
+r = api("POST", "/protocolos", topo, 403, json={"tipo_id": fund["id"], "origen": "solicitud_operaciones"})
+ok("Topografía solo llena el Reporte Topográfico" in r["error"], "Topografía solo puede llenar el Reporte Topográfico")
+api("PATCH", f"/usuarios/{topo}", jefe, json={"activo": False})
+api("GET", "/tipos", topo, 401)
+ok(True, "Usuario desactivado ya no entra")
+api("PATCH", f"/usuarios/{jefe}", jefe, 400, json={"es_admin": False})
+ok(True, "Un administrador no puede quitarse su propio acceso")
+png = io.BytesIO()
+Image.new("RGBA", (500, 200), (255, 255, 255, 0)).save(png, "PNG")
+api("POST", f"/usuarios/{ops}/sello", sup, 403, files={"archivo": ("firma.png", png.getvalue(), "image/png")})
+api("POST", f"/usuarios/{ops}/sello", ops, files={"archivo": ("firma.png", png.getvalue(), "image/png")})
+ok(c.get(f"/api/usuarios/{ops}/sello").content[:4] == b"\x89PNG", "Cada firmante sube su firma escaneada (solo la suya)")
+r = api("POST", "/contactos", jefe, json={"nombre": "Supervisora Hudbay", "email": "sup@hudbay.example", "cargo": "Supervisor",
+                                           "empresa": "Hudbay"})
+ok(r["empresa"] == "Hudbay", "El administrador registra firmantes externos")
 
 print(f"\nTodo correcto: {pasos} verificaciones.")

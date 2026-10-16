@@ -12,6 +12,8 @@ from pathlib import Path
 
 warnings.filterwarnings("ignore")
 os.environ["PROTOCOLOS_DATOS"] = tempfile.mkdtemp(prefix="protocolos-export-")
+for _k in ("DATABASE_URL", "SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY", "SUPABASE_SECRET_KEY"):
+    os.environ[_k] = ""          # siempre local
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from fastapi.testclient import TestClient  # noqa: E402
