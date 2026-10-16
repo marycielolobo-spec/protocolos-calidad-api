@@ -91,6 +91,11 @@ def _ruta_sello(perfil_id):
     return f"sellos/{perfil_id}.png"
 
 
+def _ruta_firma_contacto(contacto_id):
+    """Firma escaneada de KP / Hudbay: la cargan ellos desde el portal (o un administrador con su autorización)."""
+    return f"sellos/contactos/{contacto_id}.png"
+
+
 def _firmas(instancia_id, version):
     """Firmas para mostrar en pantalla (con la imagen de cada firma)."""
     fs = db.filas("select * from firma where instancia_id = ? and version = ? order by orden", instancia_id, version)
@@ -125,10 +130,10 @@ def _png_de_data_url(url):
 
 def _validar_firma_dibujada(url):
     if not url or not url.startswith("data:image/png;base64,"):
-        raise ErrorNegocio("Dibuje su firma en el recuadro")
+        raise ErrorNegocio("Dibuje su firma en el recuadro o cargue una imagen de su firma")
     try:
         datos = _png_de_data_url(url)
-        if len(datos) > 400_000:
+        if len(datos) > 1_500_000:
             raise ErrorNegocio("La imagen de la firma es demasiado grande")
         img = PilImage.open(io.BytesIO(datos))
         img.verify()
@@ -641,7 +646,8 @@ def revision_obtener(token):
     return {"paquete": {"codigo": p["codigo"], "es_cambio": bool(p["es_cambio"]), "cerrado_at": p["cerrado_at"],
                         "hoja_cargo_url": f"/api/revision/{token}/hoja-cargo" if p["hoja_cargo"] else None,
                         "recibido_at": p["recibido_at"]},
-            "contacto": {"nombre": c["nombre"], "empresa": c["empresa"], "correo": _enmascarar(c["email"])},
+            "contacto": {"nombre": c["nombre"], "empresa": c["empresa"], "correo": _enmascarar(c["email"]),
+                         "tiene_firma": almacen.existe(_ruta_firma_contacto(c["id"]))},
             "maestros": maestros(), "items": items, "cambios": cambios}
 
 
@@ -692,13 +698,32 @@ def _consumir_codigo(p):
     db.actualizar("paquete", p["id"], {"otp_hash": None, "otp_expira": None, "otp_intentos": 0})
 
 
-def _evidencia_externa(c, contexto):
-    return {"metodo": f"Enlace personal + código enviado a {c['email']}", "codigo_verificado_at": db.ahora(),
-            **(contexto or {})}
+ORIGEN_FIRMA = {"dibujada": "firma dibujada en pantalla", "imagen": "imagen de firma cargada por el firmante",
+                "guardada": "imagen de firma registrada"}
 
 
-def revision_decidir(token, decisiones, codigo, firma_imagen, contexto=None):
-    """KP / Hudbay acepta o rechaza cada protocolo y firma. Los aceptados quedan firmados en ese momento."""
+def _evidencia_externa(c, contexto, origen="dibujada"):
+    return {"metodo": f"Enlace personal + código enviado a {c['email']} · {ORIGEN_FIRMA[origen]}",
+            "firma_origen": origen, "codigo_verificado_at": db.ahora(), **(contexto or {})}
+
+
+def _firma_externa(c, firma_imagen, origen):
+    """Imagen de la firma de KP / Hudbay: dibujada, cargada como imagen, o la que dejó guardada antes."""
+    if origen not in ORIGEN_FIRMA:
+        raise ErrorNegocio("Origen de firma inválido")
+    if origen == "guardada":
+        try:
+            datos = almacen.leer(_ruta_firma_contacto(c["id"]))
+        except almacen.ArchivoNoEncontrado:
+            raise ErrorNegocio("No tiene una firma guardada; dibújela o cargue una imagen")
+        return "data:image/png;base64," + base64.b64encode(datos).decode()
+    _validar_firma_dibujada(firma_imagen)
+    return firma_imagen
+
+
+def revision_decidir(token, decisiones, codigo, firma_imagen, contexto=None, origen="dibujada", guardar=False):
+    """KP / Hudbay acepta o rechaza cada protocolo y firma. Los aceptados quedan firmados en ese momento.
+    Con guardar=True (imagen cargada) la firma queda registrada para sus próximas firmas."""
     p = _paquete_por_token(token)
     if p["es_cambio"]:
         raise ErrorNegocio("Acción inválida")
@@ -708,11 +733,13 @@ def revision_decidir(token, decisiones, codigo, firma_imagen, contexto=None):
         raise ErrorNegocio("Decisión inválida")
     if any(d["decision"] == "rechazado" and not (d.get("motivo") or "").strip() for d in decisiones):
         raise ErrorNegocio("Todo rechazo requiere motivo")
-    _validar_firma_dibujada(firma_imagen)
     c = _contacto(p["contacto_id"])
-    evidencia = _evidencia_externa(c, contexto)
+    firma_imagen = _firma_externa(c, firma_imagen, origen)
+    evidencia = _evidencia_externa(c, contexto, origen)
 
     _verificar_codigo(p, codigo)
+    if guardar and origen == "imagen":        # recién con el código verificado: es su firma, la cargó él mismo
+        almacen.guardar(_ruta_firma_contacto(c["id"]), _png_de_data_url(firma_imagen), "image/png")
     aprobados = []
     with db.transaccion():
         _consumir_codigo(p)
@@ -900,8 +927,11 @@ def _normalizar_email(email):
 
 def usuarios(yo):
     _exigir_admin(yo)
+    contactos = db.filas("select * from contacto order by activo desc, empresa, nombre")
+    for x in contactos:
+        x["tiene_firma"] = almacen.existe(_ruta_firma_contacto(x["id"]))
     return {"usuarios": db.filas(f"select {_CAMPOS_PERFIL} from perfil order by activo desc, nombre"),
-            "contactos": db.filas("select * from contacto order by activo desc, empresa, nombre"), "roles": ROLES}
+            "contactos": contactos, "roles": ROLES}
 
 
 def crear_usuario(yo, datos):
@@ -969,6 +999,13 @@ def subir_sello(yo, uid, datos):
     _exigir(uid == yo["id"] or yo.get("es_admin"), "Solo puede cambiar su propia firma")
     if not db.fila("select id from perfil where id = ?", uid):
         raise ErrorNegocio("Usuario no encontrado", 404)
+    almacen.guardar(_ruta_sello(uid), _png_de_firma(datos), "image/png")
+    db.actualizar("perfil", uid, {"tiene_sello": 1})
+    return {"ok": True}
+
+
+def _png_de_firma(datos):
+    """Imagen escaneada (PNG/JPG) → PNG de tamaño razonable."""
     if len(datos) > 3_000_000:
         raise ErrorNegocio("La imagen es demasiado grande (máximo 3 MB)")
     try:
@@ -979,9 +1016,7 @@ def subir_sello(yo, uid, datos):
     img.thumbnail((900, 360))
     salida = io.BytesIO()
     img.convert("RGBA").save(salida, "PNG")
-    almacen.guardar(_ruta_sello(uid), salida.getvalue(), "image/png")
-    db.actualizar("perfil", uid, {"tiene_sello": 1})
-    return {"ok": True}
+    return salida.getvalue()
 
 
 def sello(uid):
@@ -989,6 +1024,27 @@ def sello(uid):
         return almacen.leer(_ruta_sello(uid))
     except almacen.ArchivoNoEncontrado:
         raise ErrorNegocio("Sin firma escaneada", 404)
+
+
+def subir_firma_contacto(yo, cid, datos):
+    """Firma escaneada de KP / Hudbay cargada por un administrador (solo con autorización escrita del firmante)."""
+    _exigir_admin(yo)
+    _contacto(cid)
+    almacen.guardar(_ruta_firma_contacto(cid), _png_de_firma(datos), "image/png")
+    return {"ok": True}
+
+
+def firma_contacto(cid):
+    try:
+        return almacen.leer(_ruta_firma_contacto(cid))
+    except almacen.ArchivoNoEncontrado:
+        raise ErrorNegocio("Sin firma registrada", 404)
+
+
+def borrar_firma_contacto(yo, cid):
+    _exigir_admin(yo)
+    almacen.borrar(_ruta_firma_contacto(cid))
+    return {"ok": True}
 
 
 def guardar_contacto(yo, datos, cid=None):

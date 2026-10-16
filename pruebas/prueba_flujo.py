@@ -199,11 +199,20 @@ ok("firma" in r["error"].lower(), "Sin firma dibujada: rechazado")
 api("POST", f"/revision/{token}/decidir", esperado=400,
     json={**decisiones, "codigo": codigo, "decisiones": [{"instancia_id": B, "decision": "rechazado", "motivo": ""}]})
 ok(True, "Rechazo sin motivo: no se acepta")
-api("POST", f"/revision/{token}/decidir", json={**decisiones, "codigo": codigo})
+ok(rev["contacto"]["tiene_firma"] is False, "KP aún no tiene firma guardada")
+api("POST", f"/revision/{token}/decidir", json={**decisiones, "codigo": codigo, "origen": "imagen", "guardar": True})
 ok(api("GET", f"/protocolos/{A}")["inst"]["estado"] == "aprobado", "A aceptado y firmado por KP → Aprobado")
+ok(api("GET", f"/revision/{token}")["contacto"]["tiene_firma"], "KP cargó la imagen de su firma y la dejó guardada")
 ok(api("GET", f"/protocolos/{B}")["inst"]["estado"] == "observado", "B rechazado → Observado (vuelve a Calidad)")
 api("POST", f"/revision/{token}/decidir", esperado=400, json={**decisiones, "codigo": codigo})
 ok(True, "El código sirve una sola vez")
+api("POST", "/paquetes", sup, json={"instancias": [C], "contacto_id": kp})
+t2 = api("GET", "/paquetes")[0]["enlace_demo"].split("t=")[1]
+api("POST", f"/revision/{t2}/codigo")
+api("POST", f"/revision/{t2}/decidir", json={"decisiones": [{"instancia_id": C, "decision": "aceptado"}],
+                                            "codigo": ultimo_codigo(), "origen": "guardada"})
+fc = next(f for f in api("GET", f"/protocolos/{C}")["firmas"] if f.get("contacto_id"))
+ok(fc["estado"] == "firmado" and (fc["sello_url"] or "").startswith("data:image/png"), "En el siguiente paquete KP firma con su firma guardada")
 
 # PDF final con constancia de firmas
 r = c.get(f"/api/protocolos/{A}/pdf")

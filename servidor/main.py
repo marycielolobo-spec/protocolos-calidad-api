@@ -140,7 +140,9 @@ class NuevoPaquete(BaseModel):
 class Decisiones(BaseModel):
     decisiones: list[dict[str, Any]]
     codigo: str = ""
-    firma: str = ""          # firma dibujada (PNG en data URL)
+    firma: str = ""          # firma dibujada o imagen cargada (PNG en data URL)
+    origen: str = "dibujada"  # dibujada | imagen | guardada
+    guardar: bool = False    # guardar la imagen cargada para próximas firmas
 
 
 class Decision(BaseModel):
@@ -395,6 +397,21 @@ def crear_contacto(datos: DatosContacto, yo: dict = Depends(usuario)):
     return logica.guardar_contacto(yo, datos.model_dump(exclude_none=True))
 
 
+@app.post("/api/contactos/{cid}/sello")
+async def subir_firma_contacto(cid: str, archivo: UploadFile = File(...), yo: dict = Depends(usuario)):
+    return logica.subir_firma_contacto(yo, cid, await archivo.read())
+
+
+@app.get("/api/contactos/{cid}/sello")
+def ver_firma_contacto(cid: str, _: dict = Depends(usuario)):
+    return Response(logica.firma_contacto(cid), media_type="image/png")
+
+
+@app.delete("/api/contactos/{cid}/sello")
+def borrar_firma_contacto(cid: str, yo: dict = Depends(usuario)):
+    return logica.borrar_firma_contacto(yo, cid)
+
+
 @app.patch("/api/contactos/{cid}")
 def editar_contacto(cid: str, datos: DatosContacto, yo: dict = Depends(usuario)):
     return logica.guardar_contacto(yo, datos.model_dump(exclude_none=True), cid)
@@ -415,7 +432,7 @@ def revision_codigo(token: str):
 
 @app.post("/api/revision/{token}/decidir")
 def revision_decidir(token: str, datos: Decisiones, request: Request):
-    logica.revision_decidir(token, datos.decisiones, datos.codigo, datos.firma, _contexto(request))
+    logica.revision_decidir(token, datos.decisiones, datos.codigo, datos.firma, _contexto(request), datos.origen, datos.guardar)
     return {"ok": True}
 
 
