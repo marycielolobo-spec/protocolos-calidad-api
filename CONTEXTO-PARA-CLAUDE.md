@@ -39,6 +39,17 @@ La subcarpeta `protocolos-calidad\` dentro del proyecto es una copia vieja (Supa
 - Correo: Microsoft 365 rechaza SMTP con contraseña (535 5.7.3) para datos.constancia@stracon.com → usar Gmail del
   sistema (la usuaria pedirá un chip corporativo para la verificación en 2 pasos). TI no verifica dominio para Resend.
 
+## Estado al 16 oct 2026 — Supabase conectado
+- La API usa Supabase si .env tiene DATABASE_URL + SUPABASE_URL + claves (proyecto hwljayjibfakzvznjtih, São Paulo):
+  PostgreSQL con RLS en las 20 tablas (clave publicable no lee nada), Storage privado (bucket "protocolos"),
+  Supabase Auth (correo + contraseña, alta por admin con clave temporal y cambio obligatorio). Sin .env → SQLite local + "Actuar como".
+- Cargados: 19 usuarios Stracon (roles PROVISIONALES por cargo; admins Eduardo Urteaga y Josemir Paredes) y 10 externos
+  (6 Hudbay, 4 KP) con herramientas/cargar_usuarios.py. Sus contraseñas son aleatorias: dar acceso = "Contraseña temporal" en /usuarios.
+- Falta la cuenta de administradora de la usuaria (pedir su correo) y publicar en Vercel.
+- Pruebas: pruebas/prueba_flujo.py (53, local) y pruebas/prueba_supabase.py (19, contra Supabase real; borra lo que crea).
+- Lovable (quality-standards-hub): /ingresar, /cambiar-clave, /usuarios, /mi-firma; client.ts maneja token y renovación.
+- Las pantallas HTML de web/ son la demo vieja: con Supabase en .env no tienen login. Las pantallas oficiales son las de Lovable.
+
 ## Pendientes de información (de Calidad)
 Siglas de Topográfico y Drenes (hoy RT e ID provisionales), lista de planos por entregable (TMF, MIS), áreas de
 distribución de la Hoja de Cargo, usuarios reales y firmantes externos, firmas/sellos escaneados, logo,
