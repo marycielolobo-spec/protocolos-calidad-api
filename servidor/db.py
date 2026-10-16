@@ -267,6 +267,7 @@ PERFILES_DEMO = [
     ("Supervisor Calidad (demo)", "Supervisor de Calidad", "supervisor@demo", "supervisor_calidad"),
     ("Jefe de Calidad (demo)", "Jefe de Calidad", "jefe.calidad@demo", "jefe_calidad"),
     ("Ing. Operaciones (demo)", "Ingeniero de Campo", "operaciones@demo", "operaciones"),
+    ("Analista Control Documentario (demo)", "Analista de Control Documentario", "control.doc@demo", "control_documentario"),
 ]
 CONTACTOS_DEMO = [
     ("Revisor KP (demo)", "Supervisor QA", "revisor.kp@demo", "Knight Piésold"),
@@ -341,12 +342,15 @@ def iniciar():
             actualizar("proyecto", actual["id"], datos)
         else:
             insertar("proyecto", {"id": nuevo_id(), **datos})
-        if not POSTGRES and not fila("select id from perfil"):
+        if not POSTGRES:
             # Solo en la demo local: con Supabase los usuarios reales se cargan con herramientas/cargar_usuarios.py
+            nuevos = not fila("select id from perfil")
             for nombre, cargo, email, rol in PERFILES_DEMO:
+                if fila("select id from perfil where email = ?", email):
+                    continue
                 insertar("perfil", {"id": nuevo_id(), "nombre": nombre, "cargo": cargo, "email": email,
                                     "empresa": "Stracon", "rol": rol, "es_admin": int(rol == "jefe_calidad")})
-            for nombre, cargo, email, empresa in CONTACTOS_DEMO:
+            for nombre, cargo, email, empresa in CONTACTOS_DEMO if nuevos else []:
                 insertar("contacto", {"id": nuevo_id(), "nombre": nombre, "cargo": cargo, "email": email,
                                       "empresa": empresa})
         cargar_maestros(maestros)

@@ -24,6 +24,8 @@ if len(sys.argv) < 2:
     sys.exit("Indique el archivo de salida, p. ej. ..\\quality-standards-hub\\src\\api\\datos-reales.ts")
 
 c = TestClient(app)
+sesion = c.get("/api/sesion").json()
+c.headers["X-Usuario"] = sesion["perfiles"][0]["id"]      # demo local: las consultas piden un usuario
 datos = {k: c.get(f"/api/{k}").json() for k in ("sesion", "tipos", "maestros")}
 datos["sesion"]["modo"] = {"demo": True, "correo_real": False}
 

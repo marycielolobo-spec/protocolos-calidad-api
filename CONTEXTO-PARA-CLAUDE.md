@@ -48,7 +48,14 @@ La subcarpeta `protocolos-calidad\` dentro del proyecto es una copia vieja (Supa
 - Falta la cuenta de administradora de la usuaria (pedir su correo) y publicar en Vercel.
 - Modificación de un aprobado (corrección de la usuaria, 16 oct): Calidad solicita → valida la Jefatura de Calidad
   (solo jefe_calidad) → recién entonces se envía a KP, que es quien aprueba al final → V+1 "en_modificacion".
-- Pruebas: pruebas/prueba_flujo.py (57, local) y pruebas/prueba_supabase.py (19, contra Supabase real; borra lo que crea).
+- Reunión con Calidad (16 oct): flujo nuevo = supervisor llena → "Firmar y enviar" (firma "Elaborado por" al enviar)
+  → estado validacion_doc → analista de Control Documentario (rol control_documentario, son 2; NO firma, solo valida
+  con lista de verificación; si observa vuelve al supervisor y al reenviar regresa al analista) → Operaciones firma
+  → paquete. Pantalla /validacion (tabla + revisión automática + lista CHECKS_DOC en logica.py; no tenían Excel
+  propio: la lista es propuesta nuestra, ajustable). KP/Hudbay: "Confirmar recepción" firma la Hoja de Cargo al
+  recibir (/api/revision/{t}/recepcion); decide después. Pueden firmar con imagen cargada/guardada (sellos/contactos/).
+- Pendiente de Calidad: 1 formato nuevo + Excel con la regla de correlativos (solo Cunahuiri tiene correlativo).
+- Pruebas: pruebas/prueba_flujo.py (70, local) y prueba_supabase.py (20) y pruebas/prueba_supabase.py (19, contra Supabase real; borra lo que crea).
 - Lovable (quality-standards-hub): /ingresar, /cambiar-clave, /usuarios, /mi-firma; client.ts maneja token y renovación.
 - Las pantallas HTML de web/ son la demo vieja: con Supabase en .env no tienen login. Las pantallas oficiales son las de Lovable.
 

@@ -116,7 +116,7 @@ try:
 
     # 2. Alta de usuarios por el administrador
     nuevos = {}
-    for clave_rol, rol in (("sup", "supervisor_calidad"), ("ops", "operaciones")):
+    for clave_rol, rol in (("sup", "supervisor_calidad"), ("ana", "control_documentario"), ("ops", "operaciones")):
         r = api("POST", "/usuarios", ADM, json={"nombre": f"Prueba {clave_rol}", "email": f"{clave_rol}.{marca}@example.com",
                                                 "cargo": "Prueba", "rol": rol})
         creados["usuarios"].append(r["usuario"]["id"])
@@ -131,7 +131,7 @@ try:
         api("POST", "/auth/cambiar-clave", t_, json={"nueva": f"Calidad{marca}2026"})
         tokens[k] = entrar(u["email"], f"Calidad{marca}2026")["sesion"]["access_token"]
     ok(True, "Con contraseña temporal solo puede cambiarla; luego entra con la nueva")
-    SUP, OPS = tokens["sup"], tokens["ops"]
+    SUP, ANA, OPS = tokens["sup"], tokens["ana"], tokens["ops"]
 
     # 3. Firmante externo
     kp = api("POST", "/contactos", ADM, json={"nombre": f"KP prueba {marca}", "email": f"kp.{marca}@example.com",
@@ -165,10 +165,12 @@ try:
         "elaborado": {"perfil_id": nuevos["sup"][0]["id"]}, "revisado_aprobado": {"perfil_id": nuevos["ops"][0]["id"]}}})
     d = api("GET", f"/protocolos/{pid}", SUP)
     ok(d["inst"]["correlativo"].startswith("ATF-MIS-"), f"Correlativo asignado en Supabase: {d['inst']['correlativo']}")
-    api("POST", f"/firmas/{d['firmas'][0]['id']}/firmar", OPS, 403)
-    api("POST", f"/firmas/{d['firmas'][0]['id']}/firmar", SUP)
+    ok(d["inst"]["estado"] == "validacion_doc" and d["firmas"][0]["estado"] == "firmado", "Firmar y enviar: va a Control Documentario")
+    checks = [x["id"] for x in api("GET", "/validacion", ANA)["checks"]]
+    api("POST", f"/protocolos/{pid}/validacion", ANA, json={"decision": "aceptado", "checks": checks})
+    api("POST", f"/firmas/{d['firmas'][1]['id']}/firmar", SUP, 403)
     ok(api("POST", f"/firmas/{d['firmas'][1]['id']}/firmar", OPS)["estado"] == "listo_revision",
-       "Firmas internas con la sesión de cada persona")
+       "Validado por el analista; Operaciones firma con su sesión")
     r = c.get(f"/api/protocolos/{pid}/pdf", headers={"Authorization": f"Bearer {SUP}"})
     ok(r.status_code == 200 and len(PdfReader(io.BytesIO(r.content)).pages) >= 2, "PDF de revisión generado y guardado en Storage")
 
@@ -177,15 +179,18 @@ try:
     p_ = next(x for x in api("GET", "/paquetes", SUP) if x["codigo"] == paq["codigo"])
     creados["paquetes"].append(p_["id"])
     token = p_["enlace_demo"].split("t=")[1]
-    api("POST", f"/revision/{token}/codigo")
-    codigo = re.search(r"(\d{6})", db.fila("select asunto from correo where para = ? and asunto like ? order by created_at desc",
-                                            kp["email"], "%Código%")["asunto"]).group(1)
+    def codigo_kp():
+        api("POST", f"/revision/{token}/codigo")
+        return re.search(r"(\d{6})", db.fila("select asunto from correo where para = ? and asunto like ? "
+                                             "order by created_at desc, rowid desc", kp["email"], "%Código%")["asunto"]).group(1)
     firma = Image.new("RGBA", (300, 100), (255, 255, 255, 0))
     ImageDraw.Draw(firma).line([(10, 70), (90, 20), (180, 80), (290, 30)], fill=(0, 0, 0, 255), width=4)
     b = io.BytesIO()
     firma.save(b, "PNG")
-    api("POST", f"/revision/{token}/decidir", json={"codigo": codigo, "decisiones": [{"instancia_id": pid, "decision": "aceptado"}],
-                                                    "firma": "data:image/png;base64," + base64.b64encode(b.getvalue()).decode()})
+    firma_url = "data:image/png;base64," + base64.b64encode(b.getvalue()).decode()
+    api("POST", f"/revision/{token}/recepcion", json={"codigo": codigo_kp(), "firma": firma_url})
+    api("POST", f"/revision/{token}/decidir", json={"codigo": codigo_kp(), "decisiones": [{"instancia_id": pid, "decision": "aceptado"}],
+                                                    "firma": firma_url})
     ok(api("GET", f"/protocolos/{pid}", SUP)["inst"]["estado"] == "aprobado", "KP firma por el portal → Aprobado")
     r = c.get(f"/api/protocolos/{pid}/pdf", headers={"Authorization": f"Bearer {SUP}"})
     texto = "".join(pg.extract_text() for pg in PdfReader(io.BytesIO(r.content)).pages)

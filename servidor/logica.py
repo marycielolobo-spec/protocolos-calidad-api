@@ -24,7 +24,7 @@ from PIL import Image as PilImage
 from . import almacen, config, correo, db, pdf, reglas
 
 ESTADOS = {
-    "borrador": "Borrador", "firma_interna": "Firma interna", "listo_revision": "Listo para revisión",
+    "borrador": "Borrador", "validacion_doc": "Validación documentaria", "firma_interna": "Firma interna", "listo_revision": "Listo para revisión",
     "en_revision": "En revisión (tercero)", "aprobado": "Aprobado", "observado": "Observado",
     "en_modificacion": "En modificación", "anulado": "Anulado",
 }
@@ -34,9 +34,19 @@ ROL_TITULO = {"elaborado": "Elaborado por", "revisado_aprobado": "Revisado / Apr
 
 # Roles de las personas (perfil.rol). es_admin es aparte: da de alta usuarios y firmantes externos.
 ROLES = {"supervisor_calidad": "Calidad (elabora protocolos)", "jefe_calidad": "Jefatura de Calidad",
+         "control_documentario": "Control Documentario (valida antes de Operaciones)",
          "operaciones": "Operaciones (revisa y aprueba)", "topografia": "Topografía / Oficina Técnica"}
 CALIDAD = {"supervisor_calidad", "jefe_calidad"}
 TOPOGRAFICO = "ST.CA.PC.001.F001"         # el único formato que llena Topografía
+
+# Lo que el analista de Control Documentario revisa a mano en cada protocolo (el sistema revisa el resto solo)
+CHECKS_DOC = [
+    {"id": "cabecera", "texto": "Cabecera correcta: entregable, estructura, fecha y elemento"},
+    {"id": "planos", "texto": "Planos de referencia corresponden a lo liberado"},
+    {"id": "contenido", "texto": "Descripción, mediciones y observaciones claras y coherentes"},
+    {"id": "adjuntos", "texto": "Adjuntos legibles y corresponden a este protocolo"},
+    {"id": "firma", "texto": "Firma del supervisor y datos del firmante correctos"},
+]
 
 
 class ErrorNegocio(Exception):
@@ -331,7 +341,9 @@ def archivo_adjunto(adj_id):
 # ---------------------------------------------------------------------------
 # Firmas internas (personal Stracon, en la app)
 # ---------------------------------------------------------------------------
-def enviar_a_firma(yo, id_, firmantes):
+def enviar_a_firma(yo, id_, firmantes, contexto=None):
+    """El supervisor (quien elaboró) firma y envía: el protocolo pasa a Control Documentario.
+    "Elaborado por" es siempre quien envía, y su firma queda registrada en ese momento."""
     with db.transaccion():
         i = _inst(id_)
         _editable(i)
@@ -356,6 +368,8 @@ def enviar_a_firma(yo, id_, firmantes):
         db.ejecutar("delete from version where instancia_id = ? and numero = ?", id_, i["version_actual"])
         for orden, r in enumerate(t["plantilla"]["roles"], start=1):
             sel = firmantes.get(r["rol"]) or {}
+            if r["rol"] == "elaborado":
+                sel = {"perfil_id": yo["id"]}
             p = db.fila("select * from perfil where id = ? and activo = 1", sel.get("perfil_id")) if sel.get("perfil_id") else None
             c = db.fila("select * from contacto where id = ? and activo = 1", sel.get("contacto_id")) if sel.get("contacto_id") else None
             if r["canal"] == "app" and not p:
@@ -366,6 +380,10 @@ def enviar_a_firma(yo, id_, firmantes):
                                   "perfil_id": p and p["id"], "contacto_id": c and c["id"],
                                   "empresa_nombre": r["empresa"], "nombre": quien.get("nombre"),
                                   "cargo": quien.get("cargo"), "email": quien.get("email"), "estado": "pendiente"})
+        db.ejecutar("update firma set estado = 'firmado', firmado_at = ?, evidencia = ? where instancia_id = ? "
+                    "and version = ? and rol = 'elaborado' and perfil_id = ?", db.ahora(),
+                    {"metodo": "Sesión en la app (personal Stracon)", **(contexto or {})},
+                    id_, i["version_actual"], yo["id"])
 
         # Correlativo: sigla del formato + código del entregable + número (ACR-RC-001), uno por formato y entregable
         correlativo = i["correlativo"]
@@ -379,8 +397,15 @@ def enviar_a_firma(yo, id_, firmantes):
                                 "snapshot": {"cabecera": cabecera, "respuestas": i["respuestas"], "conforme": i["conforme"]},
                                 "created_at": db.ahora()})
         db.actualizar("instancia", id_, {"correlativo": correlativo, "cabecera": cabecera,
-                                         "estado": "firma_interna", "updated_at": db.ahora()})
+                                         "estado": "validacion_doc", "updated_at": db.ahora()})
         _evento(id_, "enviado_firma", {"version": i["version_actual"], "correlativo": correlativo}, yo["email"])
+        _evento(id_, "firmado", {"rol": "elaborado"}, yo["email"])
+        analistas = [x["email"] for x in db.filas("select email from perfil where rol = 'control_documentario' and activo = 1")]
+        if analistas:
+            correo.enviar(analistas, f"[Stracon] Validar {correlativo}", [
+                f"{yo['nombre']} firmó y envió el protocolo {correlativo} ({t['nombre']}).",
+                "Revíselo en Validación documentaria: si está correcto pasa a Operaciones; si no, vuelve al supervisor.",
+            ], {"texto": "Abrir validación", "url": f"{config.URL_APP}/validacion"})
 
 
 def _recalcular(id_):
@@ -443,6 +468,104 @@ def rechazar(yo, firma_id, motivo):
 # ---------------------------------------------------------------------------
 # PDF
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Validación documentaria (analista de Control Documentario): después de la firma del supervisor,
+# antes de Operaciones / Jefatura. No firma: valida u observa (vuelve al supervisor).
+# ---------------------------------------------------------------------------
+def _revision_automatica(i, t, adjuntos, firmas):
+    """Lo que el sistema puede comprobar solo, para que el analista no lo revise a mano."""
+    errores = reglas.validar(t, i, maestros())
+    faltan = reglas.faltan_adjuntos(t, i, adjuntos)
+    ent = next((e for e in maestros()["entregables"] if e["codigo"] == i["cabecera"].get("entregable")), None)
+    planos = i["cabecera"].get("plano_ref") or []
+    ajenos = [x for x in planos if ent and x not in ent["planos"]]
+    duplicado = db.fila("select id from instancia where correlativo = ? and id <> ?", i["correlativo"], i["id"])
+    elaborado = next((f for f in firmas if f["rol"] == "elaborado"), None)
+    fecha = i["cabecera"].get("fecha") or ""
+    return [
+        {"id": "datos", "texto": "Todos los datos obligatorios llenos", "ok": not errores,
+         "detalle": "; ".join(e["mensaje"] for e in errores[:3])},
+        {"id": "adjuntos", "texto": 'Adjuntos marcados como "Sí" están subidos', "ok": not faltan, "detalle": ", ".join(faltan)},
+        {"id": "planos", "texto": "Planos pertenecen al entregable", "ok": bool(planos) and not ajenos,
+         "detalle": "Sin plano de referencia" if not planos else ", ".join(ajenos)},
+        {"id": "correlativo", "texto": "Correlativo asignado y sin duplicados", "ok": bool(i["correlativo"]) and not duplicado,
+         "detalle": "Correlativo repetido" if duplicado else ""},
+        {"id": "fecha", "texto": "Fecha del protocolo no es futura", "ok": bool(fecha) and fecha[:10] <= db.ahora()[:10],
+         "detalle": fecha[:10]},
+        {"id": "firma", "texto": "Firmado por el supervisor", "ok": bool(elaborado and elaborado["estado"] == "firmado"),
+         "detalle": (elaborado or {}).get("nombre") or ""},
+    ]
+
+
+def _exigir_analista(yo):
+    _exigir(yo["rol"] == "control_documentario", "Solo el analista de Control Documentario valida protocolos")
+
+
+def validacion_pendientes(yo):
+    """Bandeja del analista: protocolos firmados por el supervisor que esperan su validación (tipo tabla, como su Excel)."""
+    _exigir(yo["rol"] in ("control_documentario", "jefe_calidad") or yo.get("es_admin"),
+            "Sin acceso a la validación documentaria")
+    salida = []
+    for i in listar("validacion_doc"):
+        t = _tipo(i["tipo_id"])
+        adjuntos = db.filas("select * from adjunto where instancia_id = ? and version = ?", i["id"], i["version_actual"])
+        firmas = db.filas("select * from firma where instancia_id = ? and version = ?", i["id"], i["version_actual"])
+        obs = db.filas("select detalle, actor, created_at from evento where instancia_id = ? and tipo = 'observado_doc' "
+                       "order by created_at desc", i["id"])
+        elaborado = next((f for f in firmas if f["rol"] == "elaborado"), {})
+        salida.append({
+            "id": i["id"], "correlativo": i["correlativo"], "numero_registro": _numero_registro(t, i["correlativo"]),
+            "formato": f"{t['codigo']} · {t['nombre']}", "entregable": i["cabecera"].get("entregable"),
+            "estructura": i["cabecera"].get("estructura"), "fecha": i["cabecera"].get("fecha"),
+            "planos": i["cabecera"].get("plano_ref") or [], "adjuntos": len(adjuntos), "version": i["version_actual"],
+            "supervisor": elaborado.get("nombre"), "enviado_at": elaborado.get("firmado_at") or i["updated_at"],
+            "automatica": _revision_automatica(i, t, adjuntos, firmas),
+            "observaciones_previas": [{"motivo": (o["detalle"] or {}).get("motivo"), "por": o["actor"], "fecha": o["created_at"]}
+                                      for o in obs],
+        })
+    return {"protocolos": salida, "checks": CHECKS_DOC}
+
+
+def validar_documentario(yo, id_, decision, motivo, checks):
+    """Acepta (pasa a Operaciones / Jefatura) u observa (vuelve al supervisor; al corregir y reenviar, vuelve aquí)."""
+    _exigir_analista(yo)
+    if decision not in ("aceptado", "observado"):
+        raise ErrorNegocio("Decisión inválida")
+    motivo = (motivo or "").strip()
+    if decision == "observado" and not motivo:
+        raise ErrorNegocio("Indique qué debe corregir el supervisor")
+    marcados = set(checks or [])
+    if decision == "aceptado" and any(c["id"] not in marcados for c in CHECKS_DOC):
+        raise ErrorNegocio("Marque todos los puntos de la lista de verificación para validar")
+    with db.transaccion():
+        i = _inst(id_)
+        if i["estado"] != "validacion_doc":
+            raise ErrorNegocio("Este protocolo no está en validación documentaria")
+        elaborado = db.fila("select * from firma where instancia_id = ? and version = ? and rol = 'elaborado'",
+                            id_, i["version_actual"])
+        if decision == "aceptado":
+            _evento(id_, "validado_doc", {"checks": sorted(marcados)}, yo["email"])
+            estado = _recalcular(id_)
+            siguiente = db.fila("select * from firma where instancia_id = ? and version = ? and canal = 'app' and "
+                                "estado = 'pendiente' order by orden limit 1", id_, i["version_actual"])
+            if siguiente and siguiente["email"]:
+                correo.enviar([siguiente["email"]], f"[Stracon] Firmar {i['correlativo']}", [
+                    f"El protocolo {i['correlativo']} fue validado por Control Documentario y espera su firma.",
+                ], {"texto": "Abrir protocolo", "url": f"{config.URL_APP}/p/{id_}"})
+        else:
+            db.actualizar("instancia", id_, {"estado": "observado", "updated_at": db.ahora()})
+            _evento(id_, "observado_doc", {"motivo": motivo}, yo["email"])
+            estado = "observado"
+            if elaborado and elaborado["email"]:
+                correo.enviar([elaborado["email"]], f"[Stracon] {i['correlativo']} observado por Control Documentario", [
+                    f"Control Documentario observó el protocolo {i['correlativo']}.", f"Qué corregir: {motivo}",
+                    'Corríjalo y vuelva a "Firmar y enviar": regresará a validación.',
+                ], {"texto": "Abrir protocolo", "url": f"{config.URL_APP}/p/{id_}"})
+    if estado == "listo_revision":
+        _intentar_pdf(id_)
+    return estado
+
+
 def generar_pdf(id_, final=False):
     """Arma el PDF de la versión vigente: formulario + adjuntos (PDF/imágenes) en orden.
     final=True agrega la hoja de constancia de firmas con el código de verificación (SHA-256)."""
@@ -721,6 +844,34 @@ def _firma_externa(c, firma_imagen, origen):
     return firma_imagen
 
 
+def revision_recepcion(token, codigo, firma_imagen, contexto=None, origen="dibujada", guardar=False):
+    """Acuse de recibo: al recibir el paquete, KP / Hudbay firma la Hoja de Cargo (como en papel).
+    La revisión (aceptar / rechazar cada protocolo) la hace después."""
+    p = _paquete_por_token(token)
+    if p["es_cambio"]:
+        raise ErrorNegocio("Acción inválida")
+    if p["recibido_at"]:
+        raise ErrorNegocio("La recepción ya fue confirmada")
+    c = _contacto(p["contacto_id"])
+    firma_imagen = _firma_externa(c, firma_imagen, origen)
+    _verificar_codigo(p, codigo)
+    if guardar and origen == "imagen":
+        almacen.guardar(_ruta_firma_contacto(c["id"]), _png_de_data_url(firma_imagen), "image/png")
+    with db.transaccion():
+        _consumir_codigo(p)
+        db.actualizar("paquete", p["id"], {"recibido_firma": firma_imagen, "recibido_at": db.ahora()})
+        for it in db.filas("select instancia_id from paquete_item where paquete_id = ?", p["id"]):
+            _evento(it["instancia_id"], "recibido", {"paquete": p["codigo"], **_evidencia_externa(c, contexto, origen)},
+                    c["email"])
+        _generar_hoja_cargo(p["id"])
+        emisor = db.fila("select * from perfil where id = ?", p["enviado_por"])
+        if emisor:
+            correo.enviar([emisor["email"]], f"[Stracon] {p['codigo']}: recepción confirmada", [
+                f"{c['nombre']} ({c['empresa']}) confirmó la recepción del paquete {p['codigo']} y firmó la Hoja de Cargo.",
+            ])
+    return {"ok": True}
+
+
 def revision_decidir(token, decisiones, codigo, firma_imagen, contexto=None, origen="dibujada", guardar=False):
     """KP / Hudbay acepta o rechaza cada protocolo y firma. Los aceptados quedan firmados en ese momento.
     Con guardar=True (imagen cargada) la firma queda registrada para sus próximas firmas."""
@@ -733,6 +884,8 @@ def revision_decidir(token, decisiones, codigo, firma_imagen, contexto=None, ori
         raise ErrorNegocio("Decisión inválida")
     if any(d["decision"] == "rechazado" and not (d.get("motivo") or "").strip() for d in decisiones):
         raise ErrorNegocio("Todo rechazo requiere motivo")
+    if not p["recibido_at"]:
+        raise ErrorNegocio("Primero confirme la recepción del paquete")
     c = _contacto(p["contacto_id"])
     firma_imagen = _firma_externa(c, firma_imagen, origen)
     evidencia = _evidencia_externa(c, contexto, origen)
@@ -771,9 +924,6 @@ def revision_decidir(token, decisiones, codigo, firma_imagen, contexto=None, ori
         items = db.filas("select * from paquete_item where paquete_id = ?", p["id"])
         if all(x["decision"] != "pendiente" for x in items):
             db.actualizar("paquete", p["id"], {"cerrado_at": db.ahora()})
-        if not p["recibido_at"]:                 # firma de recepción en la Hoja de Cargo
-            db.actualizar("paquete", p["id"], {"recibido_firma": firma_imagen, "recibido_at": db.ahora()})
-            _generar_hoja_cargo(p["id"])
 
         rech = sum(1 for d in decisiones if d["decision"] == "rechazado")
         emisor = db.fila("select * from perfil where id = ?", p["enviado_por"])

@@ -87,7 +87,8 @@ def ultimo_codigo():
 
 print("Flujo completo de protocolos")
 ses = api("GET", "/sesion")
-sup, jefe, ops = (p["id"] for p in ses["perfiles"])
+por_rol = {p["rol"]: p["id"] for p in ses["perfiles"]}
+sup, jefe, ops, ana = (por_rol[r] for r in ("supervisor_calidad", "jefe_calidad", "operaciones", "control_documentario"))
 c.headers["X-Usuario"] = sup        # consultas sin usuario explícito: como el supervisor de Calidad
 kp = ses["contactos"][0]["id"]
 tipos = api("GET", "/tipos")
@@ -150,17 +151,40 @@ ok(api("GET", f"/protocolos/{B}")["inst"]["correlativo"] == "ID-TMF-001", "Otro 
 api("PUT", f"/protocolos/{A}/valor", sup, 400, json={"cabecera": cab_a, "respuestas": resp_a, "conforme": True})
 ok(True, "En firma ya no se puede editar")
 
-# Firmas internas (secuenciales)
-f_elab, f_rev = a["firmas"][0]["id"], a["firmas"][1]["id"]
+# Firmar y enviar: el supervisor firma al enviar → Control Documentario valida → Operaciones firma
+ok(a["inst"]["estado"] == "validacion_doc" and a["firmas"][0]["estado"] == "firmado" and a["firmas"][0]["perfil_id"] == sup,
+   "Firmar y enviar: queda la firma del supervisor y pasa a Control Documentario")
+ok(any("Validar ATF-RC-001" in x["asunto"] for x in api("GET", "/correos")), "Al analista le llega el aviso")
+f_rev = a["firmas"][1]["id"]
 r = api("POST", f"/firmas/{f_rev}/firmar", ops, 400)
-ok("secuencial" in r["error"], "Firma secuencial: Operaciones no firma antes que Calidad")
-api("POST", f"/firmas/{f_elab}/firmar", ops, 403)
+ok("firma interna" in r["error"], "Operaciones no firma antes de la validación documentaria")
+val = api("GET", "/validacion", ana)
+fila_a = next(x for x in val["protocolos"] if x["id"] == A)
+ok(len(val["protocolos"]) == 3 and all(x["ok"] for x in fila_a["automatica"]),
+   "Bandeja del analista con la revisión automática en verde")
+api("GET", "/validacion", ops, 403)
+api("POST", f"/protocolos/{A}/validacion", sup, 403, json={"decision": "aceptado", "checks": []})
+ok(True, "Solo el analista valida")
+todos = [x["id"] for x in val["checks"]]
+r = api("POST", f"/protocolos/{A}/validacion", ana, 400, json={"decision": "aceptado", "checks": todos[:1]})
+ok("Marque todos" in r["error"], "Para validar debe marcar toda la lista de verificación")
+api("POST", f"/protocolos/{A}/validacion", ana, 400, json={"decision": "observado", "motivo": ""})
+api("POST", f"/protocolos/{A}/validacion", ana, json={"decision": "observado", "motivo": "Falta el número del RT"})
+ok(api("GET", f"/protocolos/{A}")["inst"]["estado"] == "observado", "Observado por el analista → vuelve al supervisor")
+api("POST", f"/protocolos/{A}/enviar-firma", sup, json=firmantes)
+fila_a = next(x for x in api("GET", "/validacion", ana)["protocolos"] if x["id"] == A)
+ok(fila_a["observaciones_previas"][0]["motivo"] == "Falta el número del RT",
+   "Corregido y reenviado: vuelve al analista con su observación previa")
+for X in (A, B, C):
+    api("POST", f"/protocolos/{X}/validacion", ana, json={"decision": "aceptado", "checks": todos})
+a = api("GET", f"/protocolos/{A}")
+ok(a["inst"]["estado"] == "firma_interna", "Validado → pasa a Operaciones")
+f_rev = a["firmas"][1]["id"]
+api("POST", f"/firmas/{f_rev}/firmar", sup, 403)
 ok(True, "Nadie firma por otra persona")
-api("POST", f"/firmas/{f_elab}/firmar", sup)
-ok(api("POST", f"/firmas/{f_rev}/firmar", ops)["estado"] == "listo_revision", "A listo para revisión tras 2 firmas")
+ok(api("POST", f"/firmas/{f_rev}/firmar", ops)["estado"] == "listo_revision", "A listo para revisión tras la firma de Operaciones")
 for X in (B, C):
     x = api("GET", f"/protocolos/{X}")
-    api("POST", f"/firmas/{x['firmas'][0]['id']}/firmar", sup)
     api("POST", f"/firmas/{x['firmas'][1]['id']}/firmar", ops)
 
 # PDF hecho en Python (ReportLab), sin Adobe ni navegador
@@ -186,6 +210,15 @@ ok(len(rev["items"]) == 2 and rev["contacto"]["empresa"] == "Knight Piésold" an
    "Portal KP muestra los 2 protocolos (correo enmascarado)")
 ok(c.get(rev["items"][0]["pdf_url"]).status_code == 200, "KP puede abrir el PDF desde el portal")
 
+r = api("POST", f"/revision/{token}/decidir", esperado=400,
+        json={"decisiones": [{"instancia_id": A, "decision": "aceptado"}], "codigo": "1", "firma": firma_png()})
+ok("recepción" in r["error"], "Antes de revisar debe confirmar la recepción")
+api("POST", f"/revision/{token}/codigo")
+api("POST", f"/revision/{token}/recepcion", json={"codigo": ultimo_codigo(), "firma": firma_png()})
+paq = next(p for p in api("GET", "/paquetes") if p["id"] == paq["id"])
+ok(paq["firmado_recepcion"], "Confirmo recepción: KP firma la Hoja de Cargo al recibir")
+api("POST", f"/revision/{token}/recepcion", esperado=400, json={"codigo": "1", "firma": firma_png()})
+ok(True, "La recepción se confirma una sola vez")
 decisiones = {"decisiones": [{"instancia_id": A, "decision": "aceptado"},
                              {"instancia_id": B, "decision": "rechazado", "motivo": "Falta ensayo"}], "firma": firma_png()}
 r = api("POST", f"/revision/{token}/decidir", esperado=400, json={**decisiones, "codigo": "123456"})
@@ -209,6 +242,8 @@ ok(True, "El código sirve una sola vez")
 api("POST", "/paquetes", sup, json={"instancias": [C], "contacto_id": kp})
 t2 = api("GET", "/paquetes")[0]["enlace_demo"].split("t=")[1]
 api("POST", f"/revision/{t2}/codigo")
+api("POST", f"/revision/{t2}/recepcion", json={"codigo": ultimo_codigo(), "origen": "guardada"})
+api("POST", f"/revision/{t2}/codigo")
 api("POST", f"/revision/{t2}/decidir", json={"decisiones": [{"instancia_id": C, "decision": "aceptado"}],
                                             "codigo": ultimo_codigo(), "origen": "guardada"})
 fc = next(f for f in api("GET", f"/protocolos/{C}")["firmas"] if f.get("contacto_id"))
@@ -220,8 +255,6 @@ texto = texto_pdf(r.content)
 ok(r.status_code == 200 and "revision" not in r.headers["content-disposition"], "PDF final firmado disponible")
 ok("Constancia de firmas".upper() in texto.upper() and "revisor.kp@demo" in texto, "PDF final trae la constancia con el correo de KP")
 ok(re.search(r"[0-9a-f]{64}", texto) is not None, "Constancia con código de verificación SHA-256")
-paq = next(p for p in api("GET", "/paquetes") if p["id"] == paq["id"])
-ok(paq["firmado_recepcion"], "Hoja de Cargo firmada por KP al registrar sus decisiones")
 
 # QC Index
 r = c.get("/api/qc-index?entregable=RC")

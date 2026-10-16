@@ -145,6 +145,19 @@ class Decisiones(BaseModel):
     guardar: bool = False    # guardar la imagen cargada para próximas firmas
 
 
+class Recepcion(BaseModel):
+    codigo: str = ""
+    firma: str = ""
+    origen: str = "dibujada"
+    guardar: bool = False
+
+
+class Validacion(BaseModel):
+    decision: str
+    motivo: str = ""
+    checks: list[str] = []
+
+
 class Decision(BaseModel):
     decision: str
     motivo: str = ""
@@ -291,8 +304,8 @@ def quitar_adjunto(adj_id: str, yo: dict = Depends(usuario)):
 
 
 @app.post("/api/protocolos/{id_}/enviar-firma")
-def enviar_a_firma(id_: str, datos: Firmantes, yo: dict = Depends(usuario)):
-    logica.enviar_a_firma(yo, id_, datos.firmantes)
+def enviar_a_firma(id_: str, datos: Firmantes, request: Request, yo: dict = Depends(usuario)):
+    logica.enviar_a_firma(yo, id_, datos.firmantes, _contexto(request))
     return {"ok": True}
 
 
@@ -428,6 +441,21 @@ def revision_obtener(token: str):
 @app.post("/api/revision/{token}/codigo")
 def revision_codigo(token: str):
     return logica.solicitar_codigo(token)
+
+
+@app.post("/api/revision/{token}/recepcion")
+def revision_recepcion(token: str, datos: Recepcion, request: Request):
+    return logica.revision_recepcion(token, datos.codigo, datos.firma, _contexto(request), datos.origen, datos.guardar)
+
+
+@app.get("/api/validacion")
+def validacion_pendientes(yo: dict = Depends(usuario)):
+    return logica.validacion_pendientes(yo)
+
+
+@app.post("/api/protocolos/{id_}/validacion")
+def validar_documentario(id_: str, datos: Validacion, yo: dict = Depends(usuario)):
+    return {"estado": logica.validar_documentario(yo, id_, datos.decision, datos.motivo, datos.checks)}
 
 
 @app.post("/api/revision/{token}/decidir")

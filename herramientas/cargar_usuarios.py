@@ -28,6 +28,8 @@ def _sin_tildes(s):
 
 def rol_por_cargo(cargo):
     c = _sin_tildes(cargo)
+    if "control documentario" in c or "documentari" in c:
+        return "control_documentario"
     if "jefe de calidad" in c:
         return "jefe_calidad"
     if "jefe de campo" in c:
