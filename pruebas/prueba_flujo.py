@@ -227,17 +227,23 @@ ok(ws.max_row == 7, "QC Index filtrado por entregable (solo RC)")
 # Control de cambios
 api("PUT", f"/protocolos/{A}/valor", sup, 400, json={"cabecera": cab_a, "respuestas": resp_a, "conforme": True})
 ok(True, "Aprobado = bloqueado")
+api("POST", f"/protocolos/{A}/cambios", ops, 403, json={"motivo": "x", "contacto_id": kp})
+ok(True, "Operaciones no solicita modificaciones")
 api("POST", f"/protocolos/{A}/cambios", sup, json={"motivo": "Error en cota", "descripcion": "Corregir", "contacto_id": kp})
 cambio = api("GET", f"/protocolos/{A}")["cambios"][0]
+ok(cambio["etapa"] == "jefatura" and not cambio["enlace_demo"], "Paso 1: la solicitud va primero a la Jefatura de Calidad")
+ok(not any("Solicitud de modificación" in x["asunto"] for x in api("GET", "/correos")), "KP todavía no recibe nada")
 api("POST", f"/cambios/{cambio['id']}/decidir", sup, 403, json={"decision": "aceptado"})
-ok(True, "Solo la Jefatura de Calidad aprueba el cambio")
+ok(True, "Solo la Jefatura de Calidad valida la modificación")
 api("POST", f"/cambios/{cambio['id']}/decidir", jefe, json={"decision": "aceptado"})
-ok(api("GET", f"/protocolos/{A}")["inst"]["estado"] == "aprobado", "Con una sola aprobación sigue aprobado")
+cambio = api("GET", f"/protocolos/{A}")["cambios"][0]
+ok(cambio["etapa"] == "externo" and cambio["enlace_demo"], "Paso 2: validada por la Jefatura, pasa a KP")
+ok(api("GET", f"/protocolos/{A}")["inst"]["estado"] == "aprobado", "Mientras KP no apruebe, sigue aprobado (V0)")
 t_cambio = cambio["enlace_demo"].split("t=")[1]
 api("POST", f"/revision/{t_cambio}/codigo")
 api("POST", f"/revision/{t_cambio}/cambio", json={"decision": "aceptado", "codigo": ultimo_codigo()})
 a = api("GET", f"/protocolos/{A}")
-ok(a["inst"]["estado"] == "en_modificacion" and a["inst"]["version_actual"] == 1, "KP (con código) + Jefatura aprueban → se abre V1")
+ok(a["inst"]["estado"] == "en_modificacion" and a["inst"]["version_actual"] == 1, "Paso 3: KP (con código) aprueba → se abre V1")
 ok(a["inst"]["correlativo"] == "ATF-RC-001", "La V1 conserva el mismo correlativo")
 ok(c.get(f"/api/protocolos/{A}/pdf?version=0").status_code == 200, "V0 y su PDF firmado se conservan")
 

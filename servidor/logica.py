@@ -229,6 +229,8 @@ def obtener(id_):
     for c in cambios:
         p = db.fila("select token_demo from paquete where cambio_id = ?", c["id"])
         c["enlace_demo"] = f"{config.URL_PORTAL}?t={p['token_demo']}" if p and p["token_demo"] else None
+        # Etapa: 1) la Jefatura de Calidad valida → 2) KP aprueba → resuelta
+        c["etapa"] = ("resuelta" if c["resuelta_at"] else "jefatura" if c["decision_calidad"] == "pendiente" else "externo")
     tipo = _tipo(inst["tipo_id"])
     return {
         "inst": inst,
@@ -762,44 +764,57 @@ def revision_decidir(token, decisiones, codigo, firma_imagen, contexto=None):
 # Control de cambios (modificar un protocolo aprobado → V+1)
 # ---------------------------------------------------------------------------
 def solicitar_cambio(yo, id_, motivo, descripcion, contacto_id):
+    """Paso 1 de 3: Calidad solicita modificar un protocolo aprobado. Le llega a la Jefatura de Calidad;
+    a KP le llega recién cuando la Jefatura la valida (paso 2) y es KP quien la aprueba al final (paso 3)."""
     _exigir(yo["rol"] in CALIDAD, "Solo Calidad solicita modificaciones")
     if not (motivo or "").strip():
         raise ErrorNegocio("El motivo es obligatorio")
     contacto = _contacto(contacto_id)
-    token = secrets.token_urlsafe(32)
     with db.transaccion():
         i = _inst(id_)
         if i["estado"] != "aprobado":
             raise ErrorNegocio("Solo aplica a protocolos aprobados")
         if db.fila("select id from cambio where instancia_id = ? and resuelta_at is null", id_):
             raise ErrorNegocio("Ya hay una solicitud de cambio pendiente")
-        cambio_id = db.nuevo_id()
-        db.insertar("cambio", {"id": cambio_id, "instancia_id": id_, "version_base": i["version_actual"],
+        db.insertar("cambio", {"id": db.nuevo_id(), "instancia_id": id_, "version_base": i["version_actual"],
                                "solicitado_por": yo["email"], "motivo": motivo.strip(), "descripcion": descripcion,
                                "contacto_id": contacto["id"], "created_at": db.ahora()})
-        # Para el portal externo la solicitud viaja como un "paquete" de un solo protocolo
-        paq_id = db.nuevo_id()
-        db.insertar("paquete", {"id": paq_id, "codigo": f"CAMBIO-{i['correlativo']}-V{i['version_actual'] + 1}",
-                                "contacto_id": contacto["id"], "token_hash": _hash(token),
-                                "token_demo": None if config.CORREO_REAL else token, "enviado_por": yo["id"],
-                                "es_cambio": 1, "cambio_id": cambio_id, "expira_at": _vence(dias=config.DIAS_VENCE_ENLACE),
-                                "created_at": db.ahora()})
-        db.insertar("paquete_item", {"paquete_id": paq_id, "instancia_id": id_, "version": i["version_actual"]})
         jefes = [p["email"] for p in db.filas("select email from perfil where rol = 'jefe_calidad' and activo = 1")]
-        _evento(id_, "cambio_solicitado", {"motivo": motivo.strip(), "a": [contacto["email"], *jefes]}, yo["email"])
-        asunto = f"[Stracon] Solicitud de modificación de {i['correlativo']}"
-        texto = [f"{yo['nombre']} solicita modificar el protocolo aprobado {i['correlativo']} (V{i['version_actual']}).",
-                 f"Motivo: {motivo.strip()}", f"Cambios previstos: {descripcion or '—'}",
-                 f"Si la Jefatura de Calidad y la supervisión aprueban, se abrirá la versión V{i['version_actual'] + 1}."]
-        correo.enviar([contacto["email"]], asunto, texto,
-                      {"texto": "Revisar solicitud", "url": f"{config.URL_PORTAL}?t={token}"})
+        _evento(id_, "cambio_solicitado", {"motivo": motivo.strip(), "a": jefes}, yo["email"])
         if jefes:
-            correo.enviar(jefes, asunto, texto, {"texto": "Abrir protocolo", "url": f"{config.URL_APP}/p/{id_}"})
-    return {"correo": contacto["email"]}
+            correo.enviar(jefes, f"[Stracon] Validar modificación de {i['correlativo']}", [
+                f"{yo['nombre']} solicita modificar el protocolo aprobado {i['correlativo']} (V{i['version_actual']}).",
+                f"Motivo: {motivo.strip()}", f"Cambios previstos: {descripcion or '—'}",
+                f"Si la valida, se enviará a {contacto['nombre']} ({contacto['empresa']}) para su aprobación final.",
+            ], {"texto": "Abrir protocolo", "url": f"{config.URL_APP}/p/{id_}"})
+    return {"correo": ", ".join(jefes) or "Jefatura de Calidad"}
+
+
+def _enviar_cambio_a_externo(c, yo):
+    """Paso 2 → 3: con la validación de la Jefatura, la solicitud viaja a KP como un paquete de un solo protocolo."""
+    i = _inst(c["instancia_id"])
+    contacto = _contacto(c["contacto_id"])
+    token = secrets.token_urlsafe(32)
+    paq_id = db.nuevo_id()
+    db.insertar("paquete", {"id": paq_id, "codigo": f"CAMBIO-{i['correlativo']}-V{c['version_base'] + 1}",
+                            "contacto_id": contacto["id"], "token_hash": _hash(token),
+                            "token_demo": None if config.CORREO_REAL else token, "enviado_por": yo["id"],
+                            "es_cambio": 1, "cambio_id": c["id"], "expira_at": _vence(dias=config.DIAS_VENCE_ENLACE),
+                            "created_at": db.ahora()})
+    db.insertar("paquete_item", {"paquete_id": paq_id, "instancia_id": i["id"], "version": c["version_base"]})
+    _evento(i["id"], "notificacion", {"a": contacto["email"], "paquete": f"CAMBIO-{i['correlativo']}"}, yo["email"])
+    correo.enviar([contacto["email"]], f"[Stracon] Solicitud de modificación de {i['correlativo']}", [
+        f"Estimado(a) {contacto['nombre']}:",
+        f"Stracon solicita modificar el protocolo aprobado {i['correlativo']} (V{c['version_base']}). "
+        "La Jefatura de Calidad de Stracon ya la validó.",
+        f"Motivo: {c['motivo']}", f"Cambios previstos: {c['descripcion'] or '—'}",
+        f"Si la aprueba, se abrirá la versión V{c['version_base'] + 1}; la versión aprobada actual se conserva.",
+    ], {"texto": "Revisar solicitud", "url": f"{config.URL_PORTAL}?t={token}"})
 
 
 def decidir_cambio_calidad(yo, cambio_id, decision, motivo):
-    _exigir(yo["rol"] == "jefe_calidad", "Solo la Jefatura de Calidad decide")
+    """Paso 2 de 3: la Jefatura de Calidad valida (pasa a KP) o rechaza (se cierra; KP no se entera)."""
+    _exigir(yo["rol"] == "jefe_calidad", "Solo la Jefatura de Calidad valida las modificaciones")
     if decision not in ("aceptado", "rechazado"):
         raise ErrorNegocio("Decisión inválida")
     if decision == "rechazado" and not (motivo or "").strip():
@@ -811,6 +826,8 @@ def decidir_cambio_calidad(yo, cambio_id, decision, motivo):
         db.actualizar("cambio", cambio_id, {"decision_calidad": decision, "motivo_calidad": motivo,
                                             "decidido_calidad_por": yo["email"]})
         _evento(c["instancia_id"], f"cambio_{decision}_calidad", {"motivo": motivo}, yo["email"])
+        if decision == "aceptado":
+            _enviar_cambio_a_externo(c, yo)
         _aplicar_cambio(cambio_id)
 
 
@@ -829,6 +846,8 @@ def decidir_cambio_externo(token, decision, motivo, codigo):
         c = db.fila("select * from cambio where id = ?", p["cambio_id"])
         if c["decision_externo"] != "pendiente" or c["resuelta_at"]:
             raise ErrorNegocio("Esta solicitud ya fue respondida")
+        if c["decision_calidad"] != "aceptado":
+            raise ErrorNegocio("La Jefatura de Calidad aún no valida esta solicitud")
         db.actualizar("cambio", c["id"], {"decision_externo": decision, "motivo_externo": motivo or None})
         db.ejecutar("update paquete_item set decision = ?, motivo = ?, decidido_at = ? where paquete_id = ?",
                     decision, motivo or None, db.ahora(), p["id"])

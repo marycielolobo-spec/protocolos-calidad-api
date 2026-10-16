@@ -46,7 +46,9 @@ La subcarpeta `protocolos-calidad\` dentro del proyecto es una copia vieja (Supa
 - Cargados: 19 usuarios Stracon (roles PROVISIONALES por cargo; admins Eduardo Urteaga y Josemir Paredes) y 10 externos
   (6 Hudbay, 4 KP) con herramientas/cargar_usuarios.py. Sus contraseñas son aleatorias: dar acceso = "Contraseña temporal" en /usuarios.
 - Falta la cuenta de administradora de la usuaria (pedir su correo) y publicar en Vercel.
-- Pruebas: pruebas/prueba_flujo.py (53, local) y pruebas/prueba_supabase.py (19, contra Supabase real; borra lo que crea).
+- Modificación de un aprobado (corrección de la usuaria, 16 oct): Calidad solicita → valida la Jefatura de Calidad
+  (solo jefe_calidad) → recién entonces se envía a KP, que es quien aprueba al final → V+1 "en_modificacion".
+- Pruebas: pruebas/prueba_flujo.py (57, local) y pruebas/prueba_supabase.py (19, contra Supabase real; borra lo que crea).
 - Lovable (quality-standards-hub): /ingresar, /cambiar-clave, /usuarios, /mi-firma; client.ts maneja token y renovación.
 - Las pantallas HTML de web/ son la demo vieja: con Supabase en .env no tienen login. Las pantallas oficiales son las de Lovable.
 
