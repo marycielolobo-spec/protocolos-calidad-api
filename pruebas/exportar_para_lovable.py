@@ -27,6 +27,7 @@ c = TestClient(app)
 sesion = c.get("/api/sesion").json()
 c.headers["X-Usuario"] = sesion["perfiles"][0]["id"]      # demo local: las consultas piden un usuario
 datos = {k: c.get(f"/api/{k}").json() for k in ("sesion", "tipos", "maestros")}
+datos["topografia"] = c.get("/api/topografia/config").json()
 datos["sesion"]["modo"] = {"demo": True, "correo_real": False}
 
 js = json.dumps(datos, ensure_ascii=False, indent=1)
