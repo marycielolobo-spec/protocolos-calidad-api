@@ -4,7 +4,7 @@
     "sigla": "RT",
     "nombre": "Reporte Topográfico",
     "categoria": "topografia",
-    "plantilla_firma": "STRACON_OPS_KP",
+    "plantilla_firma": "CAD_CALIDAD_KP",
     "qc_index": {
       "hoja": "R. Topo",
       "sin_adjuntos": true,
@@ -21,52 +21,65 @@
       ]
     },
     "schema": {
+      "correlativo": "solo_numero",
+      "sin_observaciones": true,
       "secciones": [
         {
           "tipo": "checklist",
           "titulo": "Actividades",
           "opciones": "SI_NO_NA",
+          "fijo": true,
           "grupos": [
             {
               "items": [
                 {
                   "id": "c1",
-                  "texto": "Ubicación del B.M. del Proyecto"
+                  "texto": "Ubicación del B.M. del Proyecto",
+                  "valor": "SI"
                 },
                 {
                   "id": "c2",
-                  "texto": "Ubicación de Puntos Auxiliares"
+                  "texto": "Ubicación de Puntos Auxiliares",
+                  "valor": "SI"
                 },
                 {
                   "id": "c3",
-                  "texto": "Replanteo de Linderos del Terreno"
+                  "texto": "Replanteo de Linderos del Terreno",
+                  "valor": "NO"
                 },
                 {
                   "id": "c4",
                   "texto": "Levantamiento Topográfico (*)",
+                  "valor": "SI",
                   "ayuda": "Adjuntar archivo en caso de levantamiento topográfico"
                 },
                 {
                   "id": "c5",
-                  "texto": "Trazo y replanteo de ejes"
+                  "texto": "Trazo y replanteo de ejes",
+                  "valor": "NO"
                 },
                 {
                   "id": "c6",
-                  "texto": "Distancia y proporcionalidad entre ejes"
+                  "texto": "Distancia y proporcionalidad entre ejes",
+                  "valor": "NO"
                 },
                 {
                   "id": "c7",
-                  "texto": "Colocación de niveles"
+                  "texto": "Colocación de niveles",
+                  "valor": "SI"
                 },
                 {
                   "id": "c8",
-                  "texto": "Verticalidad y alineamiento"
+                  "texto": "Verticalidad y alineamiento",
+                  "valor": "NA"
                 },
                 {
                   "id": "c9",
                   "texto": "Otros",
+                  "solo_extra": true,
                   "extra": {
-                    "label": "Especificar"
+                    "label": "Especificar",
+                    "tipo": "text"
                   }
                 }
               ]
@@ -76,7 +89,9 @@
         {
           "tipo": "tabla",
           "id": "equipos",
-          "titulo": "Datos de campo — Equipos",
+          "titulo": "Datos de campo – Equipos",
+          "fuente": "equipos",
+          "requerida": true,
           "filas_fijas": [
             "Equipo 1",
             "Equipo 2"
@@ -96,12 +111,7 @@
             },
             {
               "id": "calibracion",
-              "label": "Calibración",
-              "tipo": "select",
-              "opciones": [
-                "SI",
-                "NO"
-              ]
+              "label": "Calibración"
             },
             {
               "id": "certificado",
@@ -112,8 +122,8 @@
         {
           "tipo": "tabla",
           "id": "georreferencia",
-          "titulo": "Georreferencia (punto B.M.)",
-          "filas_min": 1,
+          "titulo": "Georreferencia",
+          "fuente": "georreferencia",
           "columnas": [
             {
               "id": "punto",
@@ -121,13 +131,7 @@
             },
             {
               "id": "tipo",
-              "label": "Tipo",
-              "tipo": "select",
-              "opciones": [
-                "BM",
-                "PA",
-                "PC"
-              ]
+              "label": "Tipo"
             },
             {
               "id": "este",
@@ -149,8 +153,10 @@
         {
           "tipo": "tabla",
           "id": "puntos_referencia",
-          "titulo": "Datos de campo — Puntos de referencia",
-          "filas_min": 1,
+          "titulo": "Datos de campo",
+          "fuente": "levantamiento",
+          "requerida": true,
+          "max_filas": 16,
           "columnas": [
             {
               "id": "punto",
@@ -158,13 +164,7 @@
             },
             {
               "id": "tipo",
-              "label": "Tipo",
-              "tipo": "select",
-              "opciones": [
-                "BM",
-                "PA",
-                "PC"
-              ]
+              "label": "Tipo"
             },
             {
               "id": "este",
@@ -181,23 +181,16 @@
               "label": "Elevación",
               "tipo": "number"
             }
-          ],
-          "nota": "BM: Bench Mark · PA: Puntos auxiliares · PC: Punto de control"
+          ]
         },
         {
           "tipo": "campos",
           "titulo": "Datos complementarios",
           "campos": [
             {
-              "id": "equipo_medicion",
-              "label": "Equipo de medición",
-              "tipo": "select",
-              "lista": "equipo_medicion",
-              "requerido": true
-            },
-            {
               "id": "archivo",
-              "label": "Archivo de levantamiento"
+              "label": "Archivo de levantamiento",
+              "solo_lectura": true
             },
             {
               "id": "plano_adjunto",
@@ -206,11 +199,14 @@
               "opciones": [
                 "SI",
                 "NO"
-              ]
+              ],
+              "solo_lectura": true
             },
             {
               "id": "topografo",
               "label": "Nombre del topógrafo",
+              "tipo": "select",
+              "fuente": "topografos",
               "requerido": true
             }
           ]
@@ -219,9 +215,11 @@
       "conformidad": null,
       "adjuntos": [
         {
-          "id": "levantamiento",
-          "label": "Archivo de levantamiento topográfico",
-          "tipo_adjunto": "topografia"
+          "id": "plano",
+          "label": "Plano topográfico",
+          "pregunta": "Cargar plano topográfico",
+          "tipo_adjunto": "plano",
+          "obligatorio": true
         }
       ]
     }
@@ -349,7 +347,9 @@
             },
             {
               "id": "rt_numero",
-              "label": "Reporte topográfico (RT N°)"
+              "label": "Reporte topográfico (RT N°)",
+              "solo_lectura": true,
+              "fuente": "reporte_topo"
             },
             {
               "id": "turno",
@@ -371,12 +371,14 @@
         {
           "id": "reporte_topografico",
           "label": "Reporte Topográfico",
-          "tipo_adjunto": "topografia"
+          "tipo_adjunto": "topografia",
+          "fuente": "reporte_topo"
         },
         {
           "id": "plano_utm",
           "label": "Plano topográfico con coordenadas UTM",
-          "tipo_adjunto": "plano"
+          "tipo_adjunto": "plano",
+          "incluido_en_reporte": true
         },
         {
           "id": "plano_geologico",
@@ -709,12 +711,14 @@
         {
           "id": "reporte_topografico",
           "label": "Reporte Topográfico",
-          "tipo_adjunto": "topografia"
+          "tipo_adjunto": "topografia",
+          "fuente": "reporte_topo"
         },
         {
           "id": "plano_topografico",
           "label": "Plano Topográfico",
-          "tipo_adjunto": "plano"
+          "tipo_adjunto": "plano",
+          "incluido_en_reporte": true
         },
         {
           "id": "protocolo_capa",
@@ -1128,12 +1132,14 @@
         {
           "id": "reporte_topografico",
           "label": "Reporte Topográfico",
-          "tipo_adjunto": "topografia"
+          "tipo_adjunto": "topografia",
+          "fuente": "reporte_topo"
         },
         {
           "id": "plano_utm",
           "label": "Plano topográfico con coordenadas UTM",
-          "tipo_adjunto": "plano"
+          "tipo_adjunto": "plano",
+          "incluido_en_reporte": true
         },
         {
           "id": "croquis",
@@ -1289,12 +1295,14 @@
         {
           "id": "reporte_topografico",
           "label": "Reporte Topográfico",
-          "tipo_adjunto": "topografia"
+          "tipo_adjunto": "topografia",
+          "fuente": "reporte_topo"
         },
         {
           "id": "plano_utm",
           "label": "Plano topográfico con coordenadas UTM",
-          "tipo_adjunto": "plano"
+          "tipo_adjunto": "plano",
+          "incluido_en_reporte": true
         },
         {
           "id": "croquis",
@@ -1519,12 +1527,14 @@
         {
           "id": "reporte_topografico",
           "label": "Reporte Topográfico",
-          "tipo_adjunto": "topografia"
+          "tipo_adjunto": "topografia",
+          "fuente": "reporte_topo"
         },
         {
           "id": "plano_utm",
           "label": "Plano topográfico con coordenadas UTM",
-          "tipo_adjunto": "plano"
+          "tipo_adjunto": "plano",
+          "incluido_en_reporte": true
         }
       ]
     }
@@ -1697,12 +1707,14 @@
         {
           "id": "reporte_topografico",
           "label": "Reporte Topográfico",
-          "tipo_adjunto": "topografia"
+          "tipo_adjunto": "topografia",
+          "fuente": "reporte_topo"
         },
         {
           "id": "plano_utm",
           "label": "Plano topográfico con coordenadas UTM",
-          "tipo_adjunto": "plano"
+          "tipo_adjunto": "plano",
+          "incluido_en_reporte": true
         }
       ]
     }
@@ -1937,12 +1949,181 @@
         {
           "id": "reporte_topografico",
           "label": "Reporte Topográfico",
-          "tipo_adjunto": "topografia"
+          "tipo_adjunto": "topografia",
+          "fuente": "reporte_topo"
         },
         {
           "id": "croquis",
           "label": "Croquis",
           "tipo_adjunto": "croquis"
+        }
+      ]
+    }
+  },
+  {
+    "codigo": "ST.CA.PC.011.F001",
+    "sigla": "AIGC",
+    "nombre": "Aceptación de la Instalación de Geoceldas",
+    "categoria": "geoceldas",
+    "plantilla_firma": "STRACON_OPS_KP",
+    "qc_index": {
+      "hoja": "A. Inst Geoc",
+      "columnas": [
+        [
+          "ÁREA (m2)",
+          "c:area"
+        ],
+        [
+          "LONGITUD (m)",
+          "calc:longitud"
+        ],
+        [
+          "PROGRESIVA INICIAL",
+          "prog:prog_inicial"
+        ],
+        [
+          "PROGRESIVA FINAL",
+          "prog:prog_final"
+        ],
+        [
+          "TURNO",
+          "turno"
+        ]
+      ]
+    },
+    "schema": {
+      "secciones": [
+        {
+          "tipo": "checklist",
+          "titulo": "Actividades",
+          "opciones": "SI_NO_NA",
+          "grupos": [
+            {
+              "items": [
+                {
+                  "id": "c1",
+                  "texto": "Se ha realizado la preparación y compactación de la superficie de terreno donde se colocará la geocelda."
+                },
+                {
+                  "id": "c2",
+                  "texto": "La superficie de terreno fue aprobada por QC y verificada por Supervisión QA."
+                },
+                {
+                  "id": "c3",
+                  "texto": "El canal cumple con las dimensiones de diseño.",
+                  "extra": {
+                    "label": "Dimensiones",
+                    "tipo": "text"
+                  }
+                },
+                {
+                  "id": "c4",
+                  "texto": "Se ha verificado el buen estado del geotextil"
+                },
+                {
+                  "id": "c5",
+                  "texto": "Colocación de geotextil de acuerdo a los planos y especificaciones técnicas (traslape mínimo de 500 mm)"
+                },
+                {
+                  "id": "c6",
+                  "texto": "La geocelda se ha colocado de acuerdo a los planos y especificaciones técnicas."
+                },
+                {
+                  "id": "c7",
+                  "texto": "Los accesorios de geoceldas han sido colocados de acuerdo a los planos y especificaciones técnicas."
+                },
+                {
+                  "id": "c8",
+                  "texto": "Se ha verificado el anclaje de las geoceldas de acuerdo a los planos y especificaciones técnicas."
+                },
+                {
+                  "id": "c9",
+                  "texto": "El área aprobada ha sido verificado por Topografía."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tipo": "campos",
+          "titulo": "Materiales",
+          "campos": [
+            {
+              "id": "tipo_relleno",
+              "label": "Tipo de relleno",
+              "tipo": "lista",
+              "lista": "material_relleno"
+            },
+            {
+              "id": "tipo_geotextil",
+              "label": "Tipo de geotextil utilizado"
+            },
+            {
+              "id": "lote_geotextil",
+              "label": "Lote del geotextil"
+            },
+            {
+              "id": "tipo_geocelda",
+              "label": "Tipo de geocelda utilizado"
+            },
+            {
+              "id": "lote_geocelda",
+              "label": "Lote de la geocelda"
+            }
+          ]
+        },
+        {
+          "tipo": "campos",
+          "titulo": "Medición",
+          "campos": [
+            {
+              "id": "area",
+              "label": "Área",
+              "tipo": "number",
+              "unidad": "m²"
+            },
+            {
+              "id": "pendiente",
+              "label": "Pendiente",
+              "tipo": "number",
+              "unidad": "%"
+            },
+            {
+              "id": "prog_inicial",
+              "label": "Prog. inicial"
+            },
+            {
+              "id": "prog_final",
+              "label": "Prog. final"
+            },
+            {
+              "id": "turno",
+              "label": "Turno",
+              "tipo": "radio",
+              "opciones": [
+                "Día",
+                "Noche"
+              ],
+              "requerido": true
+            }
+          ]
+        }
+      ],
+      "conformidad": {
+        "pregunta": "¿La instalación de Geoceldas es conforme?"
+      },
+      "adjuntos": [
+        {
+          "id": "reporte_topografico",
+          "label": "Reporte Topográfico",
+          "tipo_adjunto": "topografia",
+          "fuente": "reporte_topo"
+        },
+        {
+          "id": "plano_utm",
+          "label": "Plano topográfico con coordenadas UTM",
+          "tipo_adjunto": "plano",
+          "incluido_en_reporte": true
         }
       ]
     }

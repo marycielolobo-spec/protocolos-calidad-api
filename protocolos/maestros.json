@@ -1,5 +1,5 @@
 {
-  "_nota": "Datos maestros para los desplegables. Se cargan al arrancar el servidor. Fuente: LP Ent y Est V1.xlsx (ST.CA.PE.005.F001) y QC Index RC. Los planos de TMF y MIS están pendientes (los enviará Calidad).",
+  "_nota": "Datos maestros para los desplegables. Se cargan al arrancar el servidor. Fuente: LP Ent y Est V1.xlsx (ST.CA.PE.005.F001) y QC Index RC. Los planos de TMF, WRF y MIS están pendientes (los enviará Calidad). Correlativos (Codificación de Registros.xlsx): TMF sin código de entregable (ATF-001); los demás con código (ATF-RC-001, ATF-WRF-001).",
   "proyecto": {
     "nombre": "MINA CONSTANCIA",
     "nombre_contrato": "HBM-CC-001115-26 Control de Calidad QC – Laboratorio 2026 - 2030",
@@ -10,6 +10,7 @@
   "entregables": [
     {
       "codigo": "TMF", "nombre": "Depósito de relaves (TMF) - Etapa XI",
+      "correlativo_sin_codigo": true,
       "estructuras": [
         { "codigo": "DDR", "nombre": "Dique del depósito de relaves (TMF) - ESTE" },
         { "codigo": "DDR", "nombre": "Dique del depósito de relaves (TMF) - OESTE" },
@@ -32,6 +33,13 @@
         "LI 201.557.64.1330 (Rev. 3)", "LI 201.557.64.1345 (Rev. 3)", "LI 201.557.64.1350 (Rev. 3)",
         "LI 201.557.64.1355 (Rev. 3)", "LI 201.557.64.1360 (Rev. 3)", "LI 201.557.64.1365 (Rev. 3)"
       ]
+    },
+    {
+      "codigo": "WRF", "nombre": "Depósito de Desmonte (WRF) - Buttress",
+      "estructuras": [
+        { "codigo": "WRF", "nombre": "Depósito de Desmonte (WRF) - Buttress" }
+      ],
+      "planos": []
     },
     {
       "codigo": "MIS", "nombre": "Misceláneos",

@@ -11,7 +11,9 @@ Todas las firmas se hacen en el sistema (sin Acrobat Sign):
 - KP / Hudbay: enlace personal + código de un solo uso enviado a su correo + firma dibujada.
 """
 import base64
+import functools
 import hashlib
+import json
 import io
 import re
 import secrets
@@ -27,6 +29,8 @@ ESTADOS = {
     "borrador": "Borrador", "validacion_doc": "Validación documentaria", "firma_interna": "Firma interna", "listo_revision": "Listo para revisión",
     "en_revision": "En revisión (tercero)", "aprobado": "Aprobado", "observado": "Observado",
     "en_modificacion": "En modificación", "anulado": "Anulado",
+    # Solo el Reporte Topográfico: lo valida un supervisor y queda disponible hasta unirse a un protocolo
+    "revision_topo": "Revisión del supervisor", "disponible": "Validado · disponible", "vinculado": "Unido a un protocolo",
 }
 EDITABLE = {"borrador", "observado", "en_modificacion"}
 ORDEN_ADJUNTOS = ["topografia", "plano", "croquis", "laboratorio", "calidad", "otro"]
@@ -35,7 +39,7 @@ ROL_TITULO = {"elaborado": "Elaborado por", "revisado_aprobado": "Revisado / Apr
 # Roles de las personas (perfil.rol). es_admin es aparte: da de alta usuarios y firmantes externos.
 ROLES = {"supervisor_calidad": "Calidad (elabora protocolos)", "jefe_calidad": "Jefatura de Calidad",
          "control_documentario": "Control Documentario (valida antes de Operaciones)",
-         "operaciones": "Operaciones (revisa y aprueba)", "topografia": "Topografía / Oficina Técnica"}
+         "operaciones": "Operaciones (revisa y aprueba)", "topografia": "Cadista (reporte topográfico)"}
 CALIDAD = {"supervisor_calidad", "jefe_calidad"}
 TOPOGRAFICO = "ST.CA.PC.001.F001"         # el único formato que llena Topografía
 
@@ -80,6 +84,23 @@ def _tipo(id_):
     t = db.fila("select * from tipo where id = ?", id_)
     t["plantilla"] = db.fila("select * from plantilla where id = ?", t["plantilla_id"])
     return t
+
+
+@functools.lru_cache(maxsize=1)
+def _entregables_sin_codigo():
+    """Codificación de Registros QC: en TMF el correlativo no lleva el código del entregable (ATF-001)."""
+    m = json.loads(config.MAESTROS_JSON.read_text(encoding="utf-8"))
+    return {e["codigo"] for e in m["entregables"] if e.get("correlativo_sin_codigo")}
+
+
+def _nuevo_correlativo(t, entregable):
+    """ATF-RC-001 · ATF-001 (TMF) · 001 (Reporte Topográfico: numeración propia, la que usaban los cadistas)."""
+    if t["schema"].get("correlativo") == "solo_numero":
+        return f"{db.siguiente('correlativo:' + t['codigo']):03d}"
+    n = db.siguiente(f"correlativo:{t['codigo']}:{entregable}")
+    if entregable in _entregables_sin_codigo():
+        return f"{t['sigla']}-{n:03d}"
+    return f"{t['sigla']}-{entregable}-{n:03d}"
 
 
 def _numero_registro(tipo, correlativo):
@@ -247,11 +268,18 @@ def obtener(id_):
         # Etapa: 1) la Jefatura de Calidad valida → 2) KP aprueba → resuelta
         c["etapa"] = ("resuelta" if c["resuelta_at"] else "jefatura" if c["decision_calidad"] == "pendiente" else "externo")
     tipo = _tipo(inst["tipo_id"])
+    firmas = _firmas(id_, inst["version_actual"])
+    for f in firmas:
+        if f["rol"] == "elaborado" and f["estado"] == "firmado":
+            f["fecha_documento"] = inst["cabecera"].get("fecha")
+    reporte = db.fila("select id, correlativo from instancia where vinculado_a = ?", id_)
+    unido_a = db.fila("select id, correlativo from instancia where id = ?", inst["vinculado_a"]) if inst.get("vinculado_a") else None
     return {
         "inst": inst,
         "tipo": tipo,
         "numero_registro": _numero_registro(tipo, inst["correlativo"]) if inst["correlativo"] else None,
-        "firmas": _firmas(id_, inst["version_actual"]),
+        "reporte_topo": reporte, "unido_a": unido_a,
+        "firmas": firmas,
         "versiones": versiones,
         "adjuntos": db.filas("select id, instancia_id, version, tipo, ref_schema, nombre_archivo, tamano, created_at "
                              "from adjunto where instancia_id = ? and version = ? order by created_at",
@@ -272,9 +300,11 @@ def crear(yo, tipo_id, origen, solicitud):
         raise ErrorNegocio("Origen no válido")
     v = reglas.valor_vacio(proyecto())
     id_ = db.nuevo_id()
+    from . import topografia
+    respuestas = topografia.normalizar({"id": id_, "version_actual": 0, "respuestas": {}}, _tipo(tipo_id), v["respuestas"])
     with db.transaccion():
         db.insertar("instancia", {"id": id_, "tipo_id": tipo_id, "origen": origen, "solicitud": solicitud,
-                                  "cabecera": v["cabecera"], "respuestas": v["respuestas"], "conforme": None,
+                                  "cabecera": v["cabecera"], "respuestas": respuestas, "conforme": None,
                                   "estado": "borrador", "version_actual": 0, "creado_por": yo["id"],
                                   "created_at": db.ahora(), "updated_at": db.ahora()})
         _evento(id_, "creado", {"origen": origen}, yo["email"])
@@ -296,7 +326,9 @@ def guardar_valor(yo, id_, valor):
         if not isinstance(cabecera.get("plano_ref"), list):
             cabecera["plano_ref"] = []
         conforme = valor.get("conforme")
-        db.actualizar("instancia", id_, {"cabecera": cabecera, "respuestas": valor.get("respuestas") or {},
+        from . import topografia
+        respuestas = topografia.normalizar(i, _tipo(i["tipo_id"]), valor.get("respuestas") or {})
+        db.actualizar("instancia", id_, {"cabecera": cabecera, "respuestas": respuestas,
                                          "conforme": None if conforme is None else int(bool(conforme)),
                                          "updated_at": db.ahora()})
 
@@ -342,13 +374,17 @@ def archivo_adjunto(adj_id):
 # Firmas internas (personal Stracon, en la app)
 # ---------------------------------------------------------------------------
 def enviar_a_firma(yo, id_, firmantes, contexto=None):
-    """El supervisor (quien elaboró) firma y envía: el protocolo pasa a Control Documentario.
-    "Elaborado por" es siempre quien envía, y su firma queda registrada en ese momento."""
+    """Quien elaboró firma y envía: el protocolo pasa a Control Documentario; el Reporte Topográfico, al supervisor
+    de Calidad que lo tome. "Elaborado por" es siempre quien envía, y su firma queda registrada en ese momento."""
+    from . import topografia
     with db.transaccion():
         i = _inst(id_)
         _editable(i)
         _exigir_elaborar(yo, i["tipo_id"])
         t = _tipo(i["tipo_id"])
+        es_topo = topografia.es_topo(t)
+        i["respuestas"] = topografia.normalizar(i, t, i["respuestas"])
+        db.actualizar("instancia", id_, {"respuestas": i["respuestas"]})
         adjuntos = db.filas("select * from adjunto where instancia_id = ? and version = ?", id_, i["version_actual"])
         errores = reglas.validar(t, i, maestros())
         if errores:
@@ -372,8 +408,8 @@ def enviar_a_firma(yo, id_, firmantes, contexto=None):
                 sel = {"perfil_id": yo["id"]}
             p = db.fila("select * from perfil where id = ? and activo = 1", sel.get("perfil_id")) if sel.get("perfil_id") else None
             c = db.fila("select * from contacto where id = ? and activo = 1", sel.get("contacto_id")) if sel.get("contacto_id") else None
-            if r["canal"] == "app" and not p:
-                raise ErrorNegocio(f'Falta firmante para "{ROL_TITULO[r["rol"]]}"')
+            if r["canal"] == "app" and not p and not (es_topo and r["rol"] == "revisado_aprobado"):
+                raise ErrorNegocio(f'Falta firmante para "{ROL_TITULO[r["rol"]]}"')    # (el reporte lo toma un supervisor)
             quien = p or c or {}
             db.insertar("firma", {"id": db.nuevo_id(), "instancia_id": id_, "version": i["version_actual"],
                                   "rol": r["rol"], "orden": orden, "canal": r["canal"],
@@ -385,21 +421,25 @@ def enviar_a_firma(yo, id_, firmantes, contexto=None):
                     {"metodo": "Sesión en la app (personal Stracon)", **(contexto or {})},
                     id_, i["version_actual"], yo["id"])
 
-        # Correlativo: sigla del formato + código del entregable + número (ACR-RC-001), uno por formato y entregable
-        correlativo = i["correlativo"]
-        if not correlativo:
-            entregable = i["cabecera"]["entregable"]
-            n = db.siguiente(f"correlativo:{t['codigo']}:{entregable}")
-            correlativo = f"{t['sigla']}-{entregable}-{n:03d}"
+        # Correlativo: uno por formato y entregable (ACR-RC-001; en TMF sin código: ACR-001; reporte topográfico: 001)
+        correlativo = i["correlativo"] or _nuevo_correlativo(t, i["cabecera"]["entregable"])
         cabecera = {**i["cabecera"], "correlativo": correlativo}
         db.insertar("version", {"id": db.nuevo_id(), "instancia_id": id_, "numero": i["version_actual"],
                                 "motivo": motivo, "modificado_por": yo["email"],
                                 "snapshot": {"cabecera": cabecera, "respuestas": i["respuestas"], "conforme": i["conforme"]},
                                 "created_at": db.ahora()})
         db.actualizar("instancia", id_, {"correlativo": correlativo, "cabecera": cabecera,
-                                         "estado": "validacion_doc", "updated_at": db.ahora()})
+                                         "estado": "revision_topo" if es_topo else "validacion_doc", "updated_at": db.ahora()})
         _evento(id_, "enviado_firma", {"version": i["version_actual"], "correlativo": correlativo}, yo["email"])
         _evento(id_, "firmado", {"rol": "elaborado"}, yo["email"])
+        if es_topo:
+            supervisores = [x["email"] for x in db.filas("select email from perfil where rol = 'supervisor_calidad' and activo = 1")]
+            if supervisores:
+                correo.enviar(supervisores, f"[Stracon] Validar Reporte Topográfico {correlativo}", [
+                    f"{yo['nombre']} envió el Reporte Topográfico {correlativo} ({i['cabecera'].get('estructura') or ''}).",
+                    "El supervisor que corresponda lo valida en Topografía; si está mal, vuelve al cadista.",
+                ], {"texto": "Abrir topografía", "url": f"{config.URL_APP}/topografia"})
+            return
         analistas = [x["email"] for x in db.filas("select email from perfil where rol = 'control_documentario' and activo = 1")]
         if analistas:
             correo.enviar(analistas, f"[Stracon] Validar {correlativo}", [
@@ -577,12 +617,24 @@ def generar_pdf(id_, final=False):
     tipo = _tipo(i["tipo_id"])
     numero = _numero_registro(tipo, i["correlativo"])
     firmas = _firmas_pdf(id_, n)
+    for f in firmas:
+        if f["rol"] == "elaborado":
+            f["fecha_mostrar"] = (v["snapshot"].get("cabecera") or {}).get("fecha")
     formulario = pdf.protocolo_pdf(tipo, v["snapshot"], firmas, n, maestros(), numero, i["correlativo"])
 
     adjuntos = db.filas("select * from adjunto where instancia_id = ? and version = ?", id_, n)
     adjuntos.sort(key=lambda a: (ORDEN_ADJUNTOS.index(a["tipo"]) if a["tipo"] in ORDEN_ADJUNTOS else 99, a["created_at"]))
     partes = [formulario]
+    from . import topografia
+    reporte = topografia.reporte_de(id_)
+    if reporte:
+        try:
+            partes.append(almacen.leer(ruta_pdf(reporte["id"])[0]))       # reporte + plano, en el mismo PDF
+        except ErrorNegocio:
+            pass
     for a in adjuntos:
+        if not (a["nombre_archivo"].lower().endswith(".pdf") or pdf.es_imagen(a["nombre_archivo"])):
+            continue                                                     # el CSV del levantamiento no va al PDF
         datos = almacen.leer(a["ruta"])
         partes.append(pdf.imagen_a_pdf(datos) if pdf.es_imagen(a["nombre_archivo"]) else datos)
     contenido = pdf.unir(partes)
@@ -662,6 +714,11 @@ def crear_paquete(yo, ids, contacto_id):
                 raise ErrorNegocio(f"{i['correlativo']}: asignado a otro firmante externo")
             db.actualizar("firma", f["id"], {"contacto_id": contacto["id"], "nombre": contacto["nombre"],
                                              "cargo": contacto["cargo"], "email": contacto["email"]})
+            reporte = db.fila("select * from instancia where vinculado_a = ?", i["id"])
+            if reporte:
+                db.ejecutar("update firma set contacto_id = ?, nombre = ?, cargo = ?, email = ? where instancia_id = ? "
+                            "and version = ? and canal = 'externo' and estado = 'pendiente'", contacto["id"],
+                            contacto["nombre"], contacto["cargo"], contacto["email"], reporte["id"], reporte["version_actual"])
         codigo = f"PKG-{datetime.now().year}-{db.siguiente('paquete'):04d}"
         paq_id = db.nuevo_id()
         db.insertar("paquete", {"id": paq_id, "codigo": codigo, "contacto_id": contacto["id"], "token_hash": _hash(token),
@@ -694,6 +751,11 @@ def _generar_hoja_cargo(paq_id):
         t = _tipo(i["tipo_id"])
         registros.append({"codigo": f"{t['codigo']} [{proy['codigo_contrato']}]", "reg": i["correlativo"],
                           "descripcion": f"{t['nombre']} — {i['cabecera'].get('estructura') or ''}"})
+        reporte = db.fila("select * from instancia where vinculado_a = ?", i["id"])
+        if reporte:
+            tr = _tipo(reporte["tipo_id"])
+            registros.append({"codigo": f"{tr['codigo']} [{proy['codigo_contrato']}]", "reg": reporte["correlativo"],
+                              "descripcion": f"{tr['nombre']} (con plano) — {reporte['cabecera'].get('estructura') or ''}"})
     firma = _png_de_data_url(p["recibido_firma"]) if p["recibido_firma"] else None
     datos = pdf.hoja_cargo_pdf({
         "contrato": proy["codigo_contrato"], "proyecto_distribucion": proy["proyecto_distribucion"],
@@ -893,7 +955,7 @@ def revision_decidir(token, decisiones, codigo, firma_imagen, contexto=None, ori
     _verificar_codigo(p, codigo)
     if guardar and origen == "imagen":        # recién con el código verificado: es su firma, la cargó él mismo
         almacen.guardar(_ruta_firma_contacto(c["id"]), _png_de_data_url(firma_imagen), "image/png")
-    aprobados = []
+    aprobados, reportes_aprobados = [], []
     with db.transaccion():
         _consumir_codigo(p)
         for d in decisiones:
@@ -918,6 +980,15 @@ def revision_decidir(token, decisiones, codigo, firma_imagen, contexto=None, ori
                     db.actualizar("firma", f["id"], {"estado": "firmado", "firmado_at": db.ahora(), "firma_imagen": firma_imagen,
                                                      "evidencia": evidencia})
                     _evento(it["instancia_id"], "firmado", {"rol": f["rol"], "canal": "externo"}, c["email"])
+                reporte = db.fila("select * from instancia where vinculado_a = ?", it["instancia_id"])
+                if reporte:                       # el reporte topográfico unido queda firmado por KP con el protocolo
+                    db.ejecutar("update firma set estado = 'firmado', firmado_at = ?, firma_imagen = ?, evidencia = ?, "
+                                "contacto_id = ?, nombre = ?, cargo = ?, email = ? where instancia_id = ? and version = ? "
+                                "and canal = 'externo' and estado = 'pendiente'", db.ahora(), firma_imagen, evidencia,
+                                c["id"], c["nombre"], c["cargo"], c["email"], reporte["id"], reporte["version_actual"])
+                    db.actualizar("instancia", reporte["id"], {"estado": "aprobado", "updated_at": db.ahora()})
+                    _evento(reporte["id"], "firmado", {"rol": "aceptado", "canal": "externo", "paquete": p["codigo"]}, c["email"])
+                    reportes_aprobados.append(reporte["id"])
                 if _recalcular(it["instancia_id"]) == "aprobado":
                     aprobados.append(it["instancia_id"])
 
@@ -933,7 +1004,7 @@ def revision_decidir(token, decisiones, codigo, firma_imagen, contexto=None, ori
             "Los aceptados quedaron aprobados y su PDF final (con la constancia de firmas) ya está en el sistema.",
         ])
 
-    for id_ in aprobados:
+    for id_ in reportes_aprobados + aprobados:      # primero el reporte: su PDF firmado va dentro del protocolo
         _intentar_pdf(id_, final=True)
 
 

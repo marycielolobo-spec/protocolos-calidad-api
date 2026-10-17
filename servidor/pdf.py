@@ -278,13 +278,15 @@ def _cierre(schema, r, conforme):
     for a in schema.get("adjuntos") or []:
         v = (r.get("adjuntos") or {}).get(a["id"]) or {}
         numero = f"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;N° {escape(str(v['numero']))}" if v.get("numero") else ""
-        datos.append([_p(f"¿Se adjunta {a['label']}?"), _ph(_marca(v.get("adjunta"), ["SI", "NA"], ["Sí", "NA"]) + numero)])
+        datos.append([_p(a.get("pregunta") or f"¿Se adjunta {a['label']}?"),
+                      _ph(_marca(v.get("adjunta"), ["SI", "NA"], ["Sí", "NA"]) + numero)])
     salida = []
     if datos:
         t = Table(datos, colWidths=[95 * mm, ANCHO - 95 * mm])
         t.setStyle(_estilo_tabla(estilo))
         salida += [Spacer(1, 6), t]
-    obs = Table([[_p("OBSERVACIONES", "etq")], [_p(r.get("observaciones") or "-")]], colWidths=[ANCHO])
+    obs = Table([[_p("OBSERVACIONES", "etq")], [_p(r.get("observaciones") or ("" if schema.get("sin_observaciones") else "-"))]],
+                colWidths=[ANCHO])
     obs.setStyle(_estilo_tabla([("BACKGROUND", (0, 0), (-1, 0), FONDO), ("TOPPADDING", (0, 1), (-1, 1), 4),
                                 ("BOTTOMPADDING", (0, 1), (-1, 1), 8)]))
     return salida + [Spacer(1, 6), obs]
@@ -306,7 +308,8 @@ def _firmas(firmas):
         datos_f.append(_ph(f"<font color='#5b6673'>Nombre:</font> {escape(f.get('nombre') or '')}<br/>"
                            f"<font color='#5b6673'>Cargo:</font> {escape(f.get('cargo') or '')}<br/>"
                            f"<font color='#5b6673'>Empresa:</font> {escape(f.get('empresa_nombre') or '')}<br/>"
-                           f"<font color='#5b6673'>Fecha:</font> {fecha_hora(f.get('firmado_at')) if f.get('estado') == 'firmado' else ''}"))
+                           f"<font color='#5b6673'>Fecha:</font> "
+                           f"{fecha_hora(f.get('fecha_mostrar') or f.get('firmado_at')) if f.get('estado') == 'firmado' else ''}"))
     t = Table([titulos, cajas, datos_f], colWidths=[ANCHO / 3] * 3, rowHeights=[None, 23 * mm, None])
     t.setStyle(_estilo_tabla([("ALIGN", (0, 1), (-1, 1), "CENTER"), ("VALIGN", (0, 2), (-1, 2), "TOP")]))
     return KeepTogether([Spacer(1, 10), t])

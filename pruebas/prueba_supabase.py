@@ -147,7 +147,7 @@ try:
     checklist = {it["id"]: {"r": "SI"} for s_ in fund["schema"]["secciones"] if s_["tipo"] == "checklist"
                  for g in s_["grupos"] for it in g["items"]}
     adjuntos = {a["id"]: {"adjunta": "NA"} for a in fund["schema"]["adjuntos"]}
-    adjuntos["reporte_topografico"] = {"adjunta": "SI", "numero": "RT-PRUEBA"}
+    adjuntos["plano_geologico"] = {"adjunta": "SI", "numero": "PG-PRUEBA"}
     valor = {"cabecera": {**d["inst"]["cabecera"], "entregable": "MIS", "estructura": "Plataforma CG01"},
              "respuestas": {"checklist": checklist, "adjuntos": adjuntos, "descripcion": "Prueba automática Supabase",
                             "campos": {"area": 100, "nivel_terreno": "variable", "prog_inicial": "0+000", "prog_final": "0+010",
@@ -158,7 +158,7 @@ try:
     img = io.BytesIO()
     Image.new("RGB", (300, 200), "steelblue").save(img, "PNG")
     api("POST", f"/protocolos/{pid}/adjuntos", SUP, files={"archivo": ("plano.png", img.getvalue(), "image/png")},
-        data={"tipo": "topografia", "ref_schema": "reporte_topografico"})
+        data={"tipo": "plano", "ref_schema": "plano_geologico"})
     ruta_adj = db.fila("select ruta from adjunto where instancia_id = ?", pid)["ruta"]
     ok(almacen.existe(ruta_adj), "El adjunto quedó en Supabase Storage (privado)")
     api("POST", f"/protocolos/{pid}/enviar-firma", SUP, json={"firmantes": {

@@ -1,0 +1,128 @@
+{
+  "_nota": "Equipos de topografía iniciales (Log de Rep de Insp de los EME_TOPOGRAFIA). Un administrador los reemplaza subiendo el Excel nuevo en Topografía > Configuración.",
+  "equipos": [
+    {
+      "rieme": "RIEME-TOP-2026-01",
+      "descripcion": "RECEPTOR  GNSS",
+      "marca": "TRIMBLE",
+      "modelo": "R8-3",
+      "serie": "5238496790",
+      "certificado": "26-OG-0220",
+      "fecha_calibracion": "2026-03-27",
+      "proxima_calibracion": "2027-03-26"
+    },
+    {
+      "rieme": "RIEME-TOP-2026-01",
+      "descripcion": "CONTROLADOR",
+      "marca": "TRIMBLE",
+      "modelo": "TSC3",
+      "serie": "RS29C44929",
+      "certificado": "26-OG-0223",
+      "fecha_calibracion": "2026-03-27",
+      "proxima_calibracion": "2027-03-26"
+    },
+    {
+      "rieme": "RIEME-TOP-2026-01",
+      "descripcion": "NIVEL AUTOMATICO",
+      "marca": "SPECTRA",
+      "modelo": "AL32A",
+      "serie": "849711",
+      "certificado": "2026-02-014",
+      "fecha_calibracion": "2026-03-24",
+      "proxima_calibracion": "2027-03-23"
+    },
+    {
+      "rieme": "RIEME-TOP-2026-02",
+      "descripcion": "RECEPTOR  GNSS",
+      "marca": "TRIMBLE",
+      "modelo": "R12",
+      "serie": "6025F00995",
+      "certificado": "26-OG-0194",
+      "fecha_calibracion": "2026-03-24",
+      "proxima_calibracion": "2027-03-23"
+    },
+    {
+      "rieme": "RIEME-TOP-2026-02",
+      "descripcion": "CONTROLADOR",
+      "marca": "TRIMBLE",
+      "modelo": "TSC7",
+      "serie": "DAD192700272",
+      "certificado": "26-OG-0435",
+      "fecha_calibracion": "2026-06-12",
+      "proxima_calibracion": "2027-06-11"
+    },
+    {
+      "rieme": "RIEME-TOP-2026-03",
+      "descripcion": "CONTROLADOR",
+      "marca": "TRIMBLE",
+      "modelo": "TSC5",
+      "serie": "JAJ242610281",
+      "certificado": "26-OG-0206",
+      "fecha_calibracion": "2026-03-24",
+      "proxima_calibracion": "2027-03-23"
+    },
+    {
+      "rieme": "RIEME-TOP-2026-03",
+      "descripcion": "RECEPTOR  GNSS",
+      "marca": "TRIMBLE",
+      "modelo": "R8-4",
+      "serie": "5318436342",
+      "certificado": "26-OG-0422",
+      "fecha_calibracion": "2026-06-12",
+      "proxima_calibracion": "2027-06-11"
+    },
+    {
+      "rieme": "RIEME-TOP-2026-03",
+      "descripcion": "CONTROLADOR",
+      "marca": "TRIMBLE",
+      "modelo": "TSC3",
+      "serie": "RS3VC84107",
+      "certificado": "26-OG-0423",
+      "fecha_calibracion": "2026-06-12",
+      "proxima_calibracion": "2027-06-11"
+    },
+    {
+      "rieme": "RIEME-TOP-2026-03",
+      "descripcion": "CONTROLADOR",
+      "marca": "TRIMBLE",
+      "modelo": "TSC3",
+      "serie": "RS79D23480",
+      "certificado": "26-OG-0427",
+      "fecha_calibracion": "2026-06-12",
+      "proxima_calibracion": "2027-06-11"
+    },
+    {
+      "rieme": "RIEME-TOP-2026-03",
+      "descripcion": "RECEPTOR  GNSS",
+      "marca": "TRIMBLE",
+      "modelo": "R12",
+      "serie": "6025F00988",
+      "certificado": "26-OG-0428",
+      "fecha_calibracion": "2026-06-12",
+      "proxima_calibracion": "2027-06-11"
+    },
+    {
+      "rieme": "RIEME-TOP-2026-03",
+      "descripcion": "RECEPTOR  GNSS",
+      "marca": "TRIMBLE",
+      "modelo": "R980",
+      "serie": "6423739165",
+      "certificado": "26-OG-0205",
+      "fecha_calibracion": "2026-03-24",
+      "proxima_calibracion": "2027-03-23"
+    },
+    {
+      "rieme": "RIEME-TOP-2026-03",
+      "descripcion": "ESTACIÓN TOTAL LASER",
+      "marca": "TRIMBLE",
+      "modelo": "TRIMBLE S3 2\" DR",
+      "serie": "91010184",
+      "certificado": "2026-02-011",
+      "fecha_calibracion": "2026-03-18",
+      "proxima_calibracion": "2027-03-17"
+    }
+  ],
+  "topografos": [
+    "Pamela Choque"
+  ]
+}

@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import almacen, auth, config, db, logica, qc_index
+from . import almacen, auth, config, db, logica, qc_index, topografia
 from .logica import ErrorNegocio
 
 app = FastAPI(title="Protocolos de Calidad — Stracon / Constancia", version="3.0")
@@ -428,6 +428,67 @@ def borrar_firma_contacto(cid: str, yo: dict = Depends(usuario)):
 @app.patch("/api/contactos/{cid}")
 def editar_contacto(cid: str, datos: DatosContacto, yo: dict = Depends(usuario)):
     return logica.guardar_contacto(yo, datos.model_dump(exclude_none=True), cid)
+
+
+# ---------------------------------------------------------------------------
+# Topografía: reporte del cadista → validación del supervisor → unión a un protocolo
+# ---------------------------------------------------------------------------
+class Vinculo(BaseModel):
+    reporte_id: str = ""
+
+
+class Topografo(BaseModel):
+    nombre: str
+
+
+@app.get("/api/topografia/config")
+def topo_config(_: dict = Depends(usuario)):
+    return topografia.configuracion()
+
+
+@app.get("/api/topografia/reportes")
+def topo_reportes(_: dict = Depends(usuario)):
+    return topografia.reportes()
+
+
+@app.post("/api/topografia/equipos")
+async def topo_equipos(archivo: UploadFile = File(...), yo: dict = Depends(usuario)):
+    return topografia.importar_equipos(yo, await archivo.read())
+
+
+@app.post("/api/topografia/topografos")
+def topo_agregar_topografo(datos: Topografo, yo: dict = Depends(usuario)):
+    return topografia.agregar_topografo(yo, datos.nombre)
+
+
+@app.delete("/api/topografia/topografos/{nombre}")
+def topo_quitar_topografo(nombre: str, yo: dict = Depends(usuario)):
+    return topografia.quitar_topografo(yo, nombre)
+
+
+@app.put("/api/topografia/georreferencia")
+def topo_georreferencia(datos: dict[str, Any], yo: dict = Depends(usuario)):
+    return topografia.guardar_georreferencia(yo, datos)
+
+
+@app.post("/api/protocolos/{id_}/levantamiento")
+async def topo_levantamiento(id_: str, archivo: UploadFile = File(...), yo: dict = Depends(usuario)):
+    return topografia.subir_levantamiento(yo, id_, archivo.filename or "levantamiento.csv", await archivo.read())
+
+
+@app.post("/api/protocolos/{id_}/revision-topo")
+def topo_revisar(id_: str, datos: Validacion, request: Request, yo: dict = Depends(usuario)):
+    return topografia.revisar(yo, id_, datos.decision, datos.motivo, _contexto(request))
+
+
+@app.get("/api/protocolos/{id_}/reportes-disponibles")
+def topo_disponibles(id_: str, _: dict = Depends(usuario)):
+    return topografia.disponibles(id_)
+
+
+@app.post("/api/protocolos/{id_}/reporte-topo")
+def topo_vincular(id_: str, datos: Vinculo, yo: dict = Depends(usuario)):
+    return topografia.vincular(yo, id_, datos.reporte_id)
 
 
 # ---------------------------------------------------------------------------

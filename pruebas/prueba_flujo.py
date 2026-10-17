@@ -88,15 +88,16 @@ def ultimo_codigo():
 print("Flujo completo de protocolos")
 ses = api("GET", "/sesion")
 por_rol = {p["rol"]: p["id"] for p in ses["perfiles"]}
-sup, jefe, ops, ana = (por_rol[r] for r in ("supervisor_calidad", "jefe_calidad", "operaciones", "control_documentario"))
+sup, jefe, ops, ana, cad = (por_rol[r] for r in ("supervisor_calidad", "jefe_calidad", "operaciones", "control_documentario",
+                                                  "topografia"))
 c.headers["X-Usuario"] = sup        # consultas sin usuario explícito: como el supervisor de Calidad
 kp = ses["contactos"][0]["id"]
 tipos = api("GET", "/tipos")
-ok(len(tipos) == 8 and all(t["sigla"] for t in tipos), "8 formatos cargados, cada uno con su sigla")
+ok(len(tipos) == 9 and all(t["sigla"] for t in tipos), "9 formatos cargados (con Geoceldas), cada uno con su sigla")
 m = api("GET", "/maestros")
 rc = next(e for e in m["entregables"] if e["codigo"] == "RC")
 tmf = next(e for e in m["entregables"] if e["codigo"] == "TMF")
-ok(len(m["entregables"]) == 3 and len(tmf["estructuras"]) == 6 and rc["planos"], "Maestros: 3 entregables, 6 estructuras en TMF, planos de RC")
+ok(len(m["entregables"]) == 4 and len(tmf["estructuras"]) == 6 and rc["planos"], "Maestros: 4 entregables (con WRF), 6 estructuras en TMF, planos de RC")
 ok("Relleno Común" in m["listas"]["material_relleno"], "Listas para desplegables cargadas")
 
 fund = next(t for t in tipos if t["codigo"] == "ST.CA.PC.001.F001".replace("F001", "F002"))   # Terreno de fundación
@@ -112,7 +113,7 @@ ok("Entregable" in r["error"], "No deja enviar sin entregable ni datos")
 # Estructura que no corresponde al entregable
 d = api("GET", f"/protocolos/{A}")
 resp_a = llenar(fund)
-adj = fund["schema"]["adjuntos"][0]
+adj = next(a_ for a_ in fund["schema"]["adjuntos"] if a_["id"] == "plano_geologico")
 resp_a["adjuntos"][adj["id"]] = {"adjunta": "SI", "numero": "RT-001"}
 api("PUT", f"/protocolos/{A}/valor", sup, json={"cabecera": cabecera(d, "RC", tmf["estructuras"][0]["nombre"]),
                                               "respuestas": resp_a, "conforme": True})
@@ -138,6 +139,74 @@ r = api("POST", f"/protocolos/{A}/enviar-firma", sup, 400, json=firmantes)
 ok("requiere observación" in r["error"], "Respuesta NO sin observación: lo detiene")
 
 api("PUT", f"/protocolos/{A}/valor", sup, json={"cabecera": cab_a, "respuestas": resp_a, "conforme": True})
+
+# Reporte Topográfico: el cadista lo hace → un supervisor lo valida → se une (uno a uno) al protocolo A
+topo_t = next(t_ for t_ in tipos if t_["codigo"] == "ST.CA.PC.001.F001")
+conf = api("GET", "/topografia/config", cad)
+ok(conf["georreferencia"]["punto"] == "BASE H.B.P." and conf["topografos"] and conf["equipos"]
+   and not any("NIVEL" in (e["descripcion"] or "") for e in conf["equipos"]),
+   "Topografía: georreferencia fija, equipos del Excel (sin nivel automático) y topógrafos")
+R = api("POST", "/protocolos", cad, json={"tipo_id": topo_t["id"], "origen": "solicitud_operaciones"})["id"]
+d = api("GET", f"/protocolos/{R}", cad)
+ok(d["inst"]["respuestas"]["checklist"]["c3"]["r"] == "NO" and d["inst"]["respuestas"]["checklist"]["c8"]["r"] == "NA",
+   "Actividades fijas: las pone el sistema")
+gnss = next(e for e in conf["equipos"] if e["modelo"] == "R980")
+api("PUT", f"/protocolos/{R}/valor", cad, json={
+    "cabecera": cabecera(d, "RC", "Reservorio Cunahuiri", rc["planos"][:1]), "conforme": None,
+    "respuestas": {**d["inst"]["respuestas"], "descripcion": "Levantamiento de fundación (prueba)", "observaciones": "no va",
+                   "checklist": {"c1": {"r": "NO"}},
+                   "campos": {"equipo_1": gnss["serie"], "topografo": conf["topografos"][0]}}})
+rr = api("GET", f"/protocolos/{R}", cad)["inst"]["respuestas"]
+ok(rr["checklist"]["c1"]["r"] == "SI" and rr["observaciones"] == "" and rr["tablas"]["georreferencia"][0]["este"] == "200966.792",
+   "Nadie cambia actividades, observaciones ni georreferencia")
+eq = rr["tablas"]["equipos"][0]
+ok(eq["marca"] == "TRIMBLE" and eq["serie"] == gnss["serie"] and eq["calibracion"] == "SI" and eq["certificado"] == gnss["certificado"]
+   and rr["campos"]["equipo_medicion"] == f"GPS TRIMBLE R980 {gnss['serie']}",
+   "Se elige el equipo y marca, serie, certificado y calibración salen solos")
+csv_largo = "\n".join(f"{n},8398516.903,203316.548,4227.918" for n in range(1, 18)).encode()
+r = api("POST", f"/protocolos/{R}/levantamiento", cad, 400, files={"archivo": ("largo.csv", csv_largo, "text/csv")})
+ok("16" in r["error"], "CSV con más de 16 puntos: rechazado")
+csv_ok = "1,8398516.903,203316.548,4227.918,\n2,8398522.877,203315.201,4228.077,504.6\n".encode()
+api("POST", f"/protocolos/{R}/levantamiento", cad, files={"archivo": ("260925-C2-R COMUN.csv", csv_ok, "text/csv")})
+rr = api("GET", f"/protocolos/{R}", cad)["inst"]["respuestas"]
+pr = rr["tablas"]["puntos_referencia"]
+ok(len(pr) == 2 and pr[0]["norte"] == "8398516.903" and pr[0]["este"] == "203316.548" and pr[1]["elevacion"] == "4228.077"
+   and pr[0]["tipo"] == "UTM" and rr["campos"]["archivo"] == "260925-C2-R COMUN",
+   "CSV: punto, norte, este y elevación (lo demás se descarta); el archivo se llama como el CSV")
+r = api("POST", f"/protocolos/{R}/enviar-firma", cad, 400, json={"firmantes": {}})
+ok("falta subir" in r["error"], "Sin plano no se envía: el plano es obligatorio")
+api("POST", f"/protocolos/{R}/adjuntos", cad, files={"archivo": ("2611-2026-PTF-RC-TS-001.png", png.getvalue(), "image/png")},
+    data={"tipo": "plano", "ref_schema": "plano"})
+api("POST", f"/protocolos/{R}/enviar-firma", cad, json={"firmantes": {}})
+d = api("GET", f"/protocolos/{R}", cad)
+ok(d["inst"]["estado"] == "revision_topo" and d["inst"]["correlativo"] == "001" and d["numero_registro"].endswith("] - 001"),
+   "Cadista firma y envía: numeración propia (001) y pasa al supervisor")
+ok(api("GET", f"/protocolos/{A}/reportes-disponibles", sup) == [], "Sin validar no aparece para unirse a un protocolo")
+api("POST", f"/protocolos/{R}/revision-topo", cad, 403, json={"decision": "aceptado"})
+api("POST", f"/protocolos/{R}/revision-topo", sup, json={"decision": "observado", "motivo": "Falta el punto 3"})
+ok(api("GET", f"/protocolos/{R}", cad)["inst"]["estado"] == "observado", "El supervisor observa: vuelve al cadista")
+api("POST", f"/protocolos/{R}/enviar-firma", cad, json={"firmantes": {}})
+api("POST", f"/protocolos/{R}/revision-topo", sup, json={"decision": "aceptado"})
+d = api("GET", f"/protocolos/{R}", cad)
+ok(d["inst"]["estado"] == "disponible" and d["firmas"][1]["estado"] == "firmado" and d["firmas"][1]["perfil_id"] == sup,
+   "El supervisor que lo toma lo valida: queda su firma y el reporte disponible")
+r = c.get(f"/api/protocolos/{R}/pdf")
+ok(r.status_code == 200 and len(PdfReader(io.BytesIO(r.content)).pages) >= 2 and "BASE H.B.P." in texto_pdf(r.content),
+   "Reporte y plano en un solo PDF")
+ok([x["id"] for x in api("GET", f"/protocolos/{A}/reportes-disponibles", sup)] == [R], "El protocolo ve el reporte validado y libre")
+api("POST", f"/protocolos/{A}/reporte-topo", sup, json={"reporte_id": R})
+ra = api("GET", f"/protocolos/{A}")["inst"]["respuestas"]
+ok(ra["adjuntos"]["reporte_topografico"]["numero"] == "001" and ra["adjuntos"]["plano_utm"]["numero"] == "2611-2026-PTF-RC-TS-001"
+   and ra["campos"]["rt_numero"] == "001", "Al unirlo, el reporte N° 001 y su plano quedan marcados solos")
+api("PUT", f"/protocolos/{A}/valor", sup, json={"cabecera": cab_a, "respuestas": resp_a, "conforme": True})
+ok(api("GET", f"/protocolos/{A}")["inst"]["respuestas"]["adjuntos"]["reporte_topografico"]["reporte_id"] == R,
+   "Guardar el protocolo no suelta el reporte unido")
+ok(api("GET", f"/protocolos/{R}", cad)["inst"]["estado"] == "vinculado" and api("GET", f"/protocolos/{C}/reportes-disponibles", sup) == [],
+   "Unido a A: ya no aparece para otro protocolo")
+r = api("POST", f"/protocolos/{C}/reporte-topo", sup, 400, json={"reporte_id": R})
+ok("otro protocolo" in r["error"], "Un reporte, un protocolo")
+api("GET", "/topografia/reportes", cad)
+ok(any(x["id"] == R and x["protocolo"] for x in api("GET", "/topografia/reportes", cad)), "Index topográfico: muestra a qué protocolo se unió")
 api("POST", f"/protocolos/{A}/enviar-firma", sup, json=firmantes)
 for X, t_, ent, est in ((B, otro, "TMF", tmf["estructuras"][0]["nombre"]), (C, fund, "RC", "Reservorio Cunahuiri")):
     d = api("GET", f"/protocolos/{X}")
@@ -147,7 +216,8 @@ a = api("GET", f"/protocolos/{A}")
 ok(a["inst"]["correlativo"] == "ATF-RC-001", f"Correlativo con sigla y entregable: {a['inst']['correlativo']}")
 ok(a["numero_registro"] == "ST.CA.PC.001.F002 [10203002] - ATF-RC-001", f"N° de registro como el QC Index: {a['numero_registro']}")
 ok(api("GET", f"/protocolos/{C}")["inst"]["correlativo"] == "ATF-RC-002", "El número sigue por formato y entregable (ATF-RC-002)")
-ok(api("GET", f"/protocolos/{B}")["inst"]["correlativo"] == "ID-TMF-001", "Otro formato y entregable empieza en 001 (ID-TMF-001)")
+ok(api("GET", f"/protocolos/{B}")["inst"]["correlativo"] == "ID-001", "En TMF el correlativo no lleva código de entregable (ID-001)")
+ok(a["firmas"][0]["fecha_documento"] == cab_a["fecha"], "La firma del elaborador lleva la fecha del protocolo")
 api("PUT", f"/protocolos/{A}/valor", sup, 400, json={"cabecera": cab_a, "respuestas": resp_a, "conforme": True})
 ok(True, "En firma ya no se puede editar")
 
@@ -200,8 +270,8 @@ r = api("POST", "/paquetes", sup, json={"instancias": [A, B], "contacto_id": kp}
 paq = api("GET", "/paquetes")[0]
 ok(r["codigo"] == paq["codigo"] and paq["enlace_demo"], f"Paquete {r['codigo']} creado")
 hc = c.get(f"/api/paquetes/{paq['id']}/hoja-cargo")
-ok(hc.status_code == 200 and "ATF-RC-001" in texto_pdf(hc.content) and "ST.CA.PG.001.F007" in texto_pdf(hc.content),
-   "Hoja de Cargo generada con los registros del paquete")
+ok(hc.status_code == 200 and "ATF-RC-001" in texto_pdf(hc.content) and "ST.CA.PG.001.F007" in texto_pdf(hc.content)
+   and "Reporte Topográfico" in texto_pdf(hc.content), "Hoja de Cargo con los registros del paquete (y el reporte topográfico)")
 token = paq["enlace_demo"].split("t=")[1]
 api("GET", "/revision/token-falso-que-no-existe-123", esperado=404)
 ok(True, "Enlace falso: rechazado")
@@ -235,6 +305,8 @@ ok(True, "Rechazo sin motivo: no se acepta")
 ok(rev["contacto"]["tiene_firma"] is False, "KP aún no tiene firma guardada")
 api("POST", f"/revision/{token}/decidir", json={**decisiones, "codigo": codigo, "origen": "imagen", "guardar": True})
 ok(api("GET", f"/protocolos/{A}")["inst"]["estado"] == "aprobado", "A aceptado y firmado por KP → Aprobado")
+d = api("GET", f"/protocolos/{R}", cad)
+ok(d["inst"]["estado"] == "aprobado" and d["firmas"][2]["estado"] == "firmado", "KP firmó el reporte topográfico junto con el protocolo")
 ok(api("GET", f"/revision/{token}")["contacto"]["tiene_firma"], "KP cargó la imagen de su firma y la dejó guardada")
 ok(api("GET", f"/protocolos/{B}")["inst"]["estado"] == "observado", "B rechazado → Observado (vuelve a Calidad)")
 api("POST", f"/revision/{token}/decidir", esperado=400, json={**decisiones, "codigo": codigo})
@@ -318,5 +390,29 @@ ok(c.get(f"/api/usuarios/{ops}/sello").content[:4] == b"\x89PNG", "Cada firmante
 r = api("POST", "/contactos", jefe, json={"nombre": "Supervisora Hudbay", "email": "sup@hudbay.example", "cargo": "Supervisor",
                                            "empresa": "Hudbay"})
 ok(r["empresa"] == "Hudbay", "El administrador registra firmantes externos")
+
+# Configuración de Topografía (solo administradores)
+from openpyxl import Workbook  # noqa: E402
+wb = Workbook()
+wb.active.append(["LOG DE REPORTES DE INSPECCIÓN DE LOS EQUIPOS DE MEDICIÓN Y/O ENSAYO"])
+wb.active.append(["N° RIEME", "FECHA", "PROVEEDOR", "N° OC / OS", "N° GUÍA DE REMISIÓN", "EQUIPOS INSPECCIONADOS", "MARCA",
+                  "MODELO", "N° SERIE / CÓDIGO", "ENTIDAD CALIBRADORA", "N° DE CERTIFICADO DE CALIBRACIÓN U OPERATIVIDAD",
+                  "FECHA DE CALIBRACIÓN", "FRECUENCIA (meses)", "PRÓXIMA CALIBRACIÓN"])
+wb.active.append(["RIEME-TOP-2027-01", None, "HUDBAY", "-", "-", "RECEPTOR GNSS", "TRIMBLE", "R12i", "NUEVO123", "GEO", "27-OG-0001",
+                  "2027-03-01", 12, "2028-03-01"])
+wb.active.append(["RIEME-TOP-2027-01", None, "HUDBAY", "-", "-", "NIVEL AUTOMATICO", "SPECTRA", "AL32A", "N1", "GEO", "x", None, 12, None])
+xlsx = io.BytesIO()
+wb.save(xlsx)
+api("POST", "/topografia/equipos", cad, 403, files={"archivo": ("eme.xlsx", xlsx.getvalue())})
+api("POST", "/topografia/equipos", jefe, files={"archivo": ("eme.xlsx", xlsx.getvalue())})
+conf = api("GET", "/topografia/config", cad)
+ok([e["modelo"] for e in conf["equipos"]] == ["R12i"], "El Excel de equipos del año reemplaza al anterior (sin nivel automático)")
+ok(api("GET", f"/protocolos/{R}", cad)["inst"]["respuestas"]["tablas"]["equipos"][0]["modelo"] == "R980",
+   "Los reportes ya hechos conservan su equipo")
+api("POST", "/topografia/topografos", jefe, json={"nombre": "  Topógrafo   Nuevo "})
+ok("Topógrafo Nuevo" in api("DELETE", "/topografia/topografos/Pamela Choque", jefe), "Se agregan y quitan topógrafos")
+api("PUT", "/topografia/georreferencia", cad, 403, json={"punto": "X", "este": 1, "norte": 2, "elevacion": 3})
+api("PUT", "/topografia/georreferencia", jefe, json={"punto": "BM-2", "este": "1", "norte": "2", "elevacion": "3"})
+ok(api("GET", "/topografia/config", cad)["georreferencia"]["punto"] == "BM-2", "La georreferencia se puede modificar (otra unidad)")
 
 print(f"\nTodo correcto: {pasos} verificaciones.")

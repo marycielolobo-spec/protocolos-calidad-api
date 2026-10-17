@@ -17,10 +17,10 @@ from datetime import datetime, timezone
 from . import config
 
 POSTGRES = bool(config.DATABASE_URL)
-VERSION_ESQUEMA = 3      # subirlo cuando cambian las tablas (SQLite: la base de prueba anterior se respalda y se crea de nuevo)
+VERSION_ESQUEMA = 4      # subirlo cuando cambian las tablas (SQLite: la base de prueba anterior se respalda y se crea de nuevo)
 
 ESQUEMA = """
--- rol: supervisor_calidad | jefe_calidad | operaciones | topografia. es_admin: da de alta usuarios.
+-- rol: supervisor_calidad | jefe_calidad | control_documentario | operaciones | topografia (cadista). es_admin: da de alta usuarios.
 -- Con Supabase, id = el id del usuario en Supabase Auth.
 create table if not exists perfil (
   id text primary key, nombre text not null, cargo text, email text not null unique,
@@ -53,7 +53,9 @@ create table if not exists instancia (
   id text primary key, tipo_id text not null references tipo(id), origen text not null,
   solicitud text, correlativo text unique, cabecera text not null, respuestas text not null, conforme integer,
   estado text not null default 'borrador', version_actual integer not null default 0,
-  creado_por text references perfil(id), created_at text not null, updated_at text not null);
+  creado_por text references perfil(id), created_at text not null, updated_at text not null,
+  vinculado_a text);
+-- vinculado_a: en un Reporte Topográfico, el protocolo al que quedó unido (uno a uno)
 create table if not exists version (
   id text primary key, instancia_id text not null references instancia(id), numero integer not null,
   motivo text, modificado_por text, snapshot text not null,
@@ -94,6 +96,11 @@ create table if not exists correo (
   id text primary key, para text not null, asunto text not null, cuerpo text not null,
   enlace text, enviado integer not null default 0, error text, created_at text not null);
 create table if not exists contador (nombre text primary key, valor integer not null);
+-- Topografía: equipos (del Excel "Log de Rep de Insp de los EME_TOPOGRAFIA", se reemplaza una vez al año) y topógrafos
+create table if not exists equipo (
+  serie text primary key, rieme text, descripcion text, marca text, modelo text not null, certificado text,
+  fecha_calibracion text, proxima_calibracion text, activo integer not null default 1, orden integer not null default 0);
+create table if not exists topografo (nombre text primary key, orden integer not null default 0);
 create table if not exists meta (clave text primary key, valor text);
 """
 
@@ -249,6 +256,10 @@ def siguiente(nombre):
 # Datos iniciales
 # ---------------------------------------------------------------------------
 PLANTILLAS = [
+    ("CAD_CALIDAD_KP", "Cadista + Supervisor de Calidad (valida) + Knight Piésold (con el protocolo)", [
+        {"rol": "elaborado", "empresa": "Stracon", "area": "Topografía", "canal": "app"},
+        {"rol": "revisado_aprobado", "empresa": "Stracon", "area": "Calidad", "canal": "app"},
+        {"rol": "aceptado", "empresa": "Knight Piésold", "area": "Supervisión", "canal": "externo"}]),
     ("STRACON_OPS_KP", "Calidad Stracon + Operaciones Stracon + Knight Piésold", [
         {"rol": "elaborado", "empresa": "Stracon", "area": "Calidad", "canal": "app"},
         {"rol": "revisado_aprobado", "empresa": "Stracon", "area": "Operaciones", "canal": "app"},
@@ -267,6 +278,7 @@ PERFILES_DEMO = [
     ("Supervisor Calidad (demo)", "Supervisor de Calidad", "supervisor@demo", "supervisor_calidad"),
     ("Jefe de Calidad (demo)", "Jefe de Calidad", "jefe.calidad@demo", "jefe_calidad"),
     ("Ing. Operaciones (demo)", "Ingeniero de Campo", "operaciones@demo", "operaciones"),
+    ("Cadista (demo)", "Cadista", "cadista@demo", "topografia"),
     ("Analista Control Documentario (demo)", "Analista de Control Documentario", "control.doc@demo", "control_documentario"),
 ]
 CONTACTOS_DEMO = [
@@ -315,6 +327,7 @@ def _crear_tablas():
             _con().execute("alter table perfil add column if not exists es_admin integer not null default 0")
             _con().execute("alter table perfil add column if not exists debe_cambiar_clave integer not null default 0")
             _con().execute("alter table perfil add column if not exists tiene_sello integer not null default 0")
+            _con().execute("alter table instancia add column if not exists vinculado_a text")
         else:
             _con().executescript(ESQUEMA)
             _con().execute(f"pragma user_version = {VERSION_ESQUEMA}")
@@ -355,6 +368,7 @@ def iniciar():
                                       "empresa": empresa})
         cargar_maestros(maestros)
         cargar_tipos(json.loads(texto_tipos))
+        cargar_topografia_inicial()
         _meta("datos_iniciales", huella)
 
 
@@ -379,6 +393,21 @@ def cargar_maestros(m):
             insertar("lista", {"clave": clave, "valor": v, "orden": j})
 
 
+def cargar_topografia_inicial():
+    """Equipos y topógrafos de protocolos/topografia.json, solo la primera vez (después se editan en la app)."""
+    ruta = config.MAESTROS_JSON.with_name("topografia.json")
+    if not ruta.exists():
+        return
+    datos = json.loads(ruta.read_text(encoding="utf-8"))
+    if not fila("select serie from equipo limit 1"):
+        for n, e in enumerate(datos.get("equipos") or []):
+            insertar("equipo", {**{k: e.get(k) for k in ("serie", "rieme", "descripcion", "marca", "modelo", "certificado",
+                                                       "fecha_calibracion", "proxima_calibracion")}, "orden": n})
+    if not fila("select nombre from topografo limit 1"):
+        for n, nombre in enumerate(datos.get("topografos") or []):
+            insertar("topografo", {"nombre": nombre, "orden": n})
+
+
 def cargar_tipos(tipos):
     for t in tipos:
         _revisar_ids(t)
@@ -388,7 +417,8 @@ def cargar_tipos(tipos):
         ejecutar("""insert into tipo (id, codigo, sigla, nombre, categoria, schema, qc_index, plantilla_id)
                     values (?, ?, ?, ?, ?, ?, ?, ?)
                     on conflict(codigo) do update set sigla = excluded.sigla, nombre = excluded.nombre,
-                    categoria = excluded.categoria, schema = excluded.schema, qc_index = excluded.qc_index""",
+                    categoria = excluded.categoria, schema = excluded.schema, qc_index = excluded.qc_index,
+                    plantilla_id = excluded.plantilla_id""",
                  t["codigo"], t["codigo"], t["sigla"], t["nombre"], t["categoria"], t["schema"], t.get("qc_index"),
                  plantilla["id"])
 

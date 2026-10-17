@@ -51,7 +51,7 @@ def validar(tipo, valor, maestros=None):
             errs.append({"campo": "cab_estructura", "mensaje": "Estructura / Frente: no pertenece al entregable elegido"})
 
     for sec in s["secciones"]:
-        if sec["tipo"] == "checklist":
+        if sec["tipo"] == "checklist" and not sec.get("fijo"):          # las fijas las pone el sistema
             for g in sec["grupos"]:
                 for it in g["items"]:
                     if it.get("solo_extra"):
@@ -62,6 +62,10 @@ def validar(tipo, valor, maestros=None):
                         errs.append({"campo": it["id"], "mensaje": f'"{texto}…": sin respuesta'})
                     elif a["r"] in NEGATIVAS and _vacio(a.get("obs")):
                         errs.append({"campo": it["id"], "mensaje": f'"{texto}…": respuesta {a["r"]} requiere observación'})
+        if sec["tipo"] == "tabla" and sec.get("requerida"):
+            filas = (respuestas.get("tablas") or {}).get(sec["id"]) or []
+            if not any(any(str(v or "").strip() for v in f.values()) for f in filas):
+                errs.append({"campo": f"tabla:{sec['id']}", "mensaje": f"{sec['titulo']}: sin datos"})
         if sec["tipo"] == "campos":
             for c in sec["campos"]:
                 if c.get("requerido") and _vacio((respuestas.get("campos") or {}).get(c["id"])):
@@ -80,8 +84,17 @@ def validar(tipo, valor, maestros=None):
 
 
 def faltan_adjuntos(tipo, valor, adjuntos):
-    """Si marcó "Sí se adjunta…", el archivo tiene que estar subido."""
+    """Si marcó "Sí se adjunta…", el archivo tiene que estar subido. El reporte topográfico no se sube: se elige
+    de los validados (y su plano viaja en el mismo PDF)."""
     marcados = (valor.get("respuestas") or {}).get("adjuntos") or {}
-    return [a["label"] for a in tipo["schema"].get("adjuntos") or []
-            if (marcados.get(a["id"]) or {}).get("adjunta") == "SI"
-            and not any(x["ref_schema"] == a["id"] for x in adjuntos)]
+    faltan = []
+    for a in tipo["schema"].get("adjuntos") or []:
+        m = marcados.get(a["id"]) or {}
+        if m.get("adjunta") != "SI" or m.get("en_reporte"):
+            continue
+        if a.get("fuente") == "reporte_topo":
+            if not m.get("reporte_id"):
+                faltan.append(f"{a['label']} (elíjalo de la lista de reportes validados)")
+        elif not any(x["ref_schema"] == a["id"] for x in adjuntos):
+            faltan.append(a["label"])
+    return faltan
