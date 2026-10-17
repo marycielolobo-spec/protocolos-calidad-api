@@ -54,8 +54,14 @@ La subcarpeta `protocolos-calidad\` dentro del proyecto es una copia vieja (Supa
   → paquete. Pantalla /validacion (tabla + revisión automática + lista CHECKS_DOC en logica.py; no tenían Excel
   propio: la lista es propuesta nuestra, ajustable). KP/Hudbay: "Confirmar recepción" firma la Hoja de Cargo al
   recibir (/api/revision/{t}/recepcion); decide después. Pueden firmar con imagen cargada/guardada (sellos/contactos/).
-- Pendiente de Calidad: 1 formato nuevo + Excel con la regla de correlativos (solo Cunahuiri tiene correlativo).
-- Pruebas: pruebas/prueba_flujo.py (70, local) y prueba_supabase.py (20) y pruebas/prueba_supabase.py (19, contra Supabase real; borra lo que crea).
+- Topografía (17 oct, servidor/topografia.py, pantalla /topografia): el cadista (rol "topografia") hace el Reporte
+  Topográfico (correlativo propio 001; actividades fijas; equipo del Excel EME → tabla equipo; georreferencia fija en
+  meta; CSV punto,norte,este,elev máx 16; plano obligatorio unido en el mismo PDF) → un supervisor de Calidad lo valida
+  (firma "Revisado") u observa → "disponible" → se une 1 a 1 a un protocolo (instancia.vinculado_a) → KP lo firma con
+  el protocolo; va en la Hoja de Cargo. Config admin: Excel anual de equipos, topógrafos (tabla topografo), georreferencia.
+- Geoceldas ST.CA.PC.011.F001 (AIGC) cargado. Correlativos: TMF sin código (ATF-001), RC/WRF con código. Entregable WRF
+  sin planos aún. MIS se queda por ahora. Firma "Elaborado por" muestra la fecha del protocolo (constancia: hora real).
+- Pruebas: pruebas/prueba_flujo.py (94, local) y prueba_supabase.py (20) y pruebas/prueba_supabase.py (19, contra Supabase real; borra lo que crea).
 - Lovable (quality-standards-hub): /ingresar, /cambiar-clave, /usuarios, /mi-firma; client.ts maneja token y renovación.
 - Las pantallas HTML de web/ son la demo vieja: con Supabase en .env no tienen login. Las pantallas oficiales son las de Lovable.
 
