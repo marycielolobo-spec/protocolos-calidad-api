@@ -39,7 +39,8 @@ ROL_TITULO = {"elaborado": "Elaborado por", "revisado_aprobado": "Revisado / Apr
 # Roles de las personas (perfil.rol). es_admin es aparte: da de alta usuarios y firmantes externos.
 ROLES = {"supervisor_calidad": "Calidad (elabora protocolos)", "jefe_calidad": "Jefatura de Calidad",
          "control_documentario": "Control Documentario (valida antes de Operaciones)",
-         "operaciones": "Operaciones (revisa y aprueba)", "topografia": "Cadista (reporte topográfico)"}
+         "operaciones": "Operaciones (revisa y aprueba)", "cadista": "Cadista (hace el reporte topográfico)",
+         "topografia": "Topografía (consulta los reportes topográficos)"}
 CALIDAD = {"supervisor_calidad", "jefe_calidad"}
 TOPOGRAFICO = "ST.CA.PC.001.F001"         # el único formato que llena Topografía
 
@@ -181,12 +182,13 @@ def _exigir(condicion, mensaje):
 
 def _puede_elaborar(yo, tipo_id):
     """Calidad llena cualquier formato; Topografía, solo el Reporte Topográfico; Operaciones solo revisa y firma."""
-    return yo["rol"] in CALIDAD or (yo["rol"] == "topografia" and tipo_id == TOPOGRAFICO)
+    return yo["rol"] in CALIDAD or (yo["rol"] == "cadista" and tipo_id == TOPOGRAFICO)
 
 
 def _exigir_elaborar(yo, tipo_id):
     _exigir(_puede_elaborar(yo, tipo_id), "Su rol no permite llenar este formato"
-            + (" (Topografía solo llena el Reporte Topográfico)" if yo["rol"] == "topografia" else ""))
+            + (" (el cadista solo llena el Reporte Topográfico)" if yo["rol"] == "cadista" else "")
+            + (" (Topografía consulta los reportes; los hace el cadista)" if yo["rol"] == "topografia" else ""))
 
 
 def _contacto(id_):

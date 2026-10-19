@@ -7,7 +7,8 @@ Uso:  .venv\\Scripts\\python herramientas\\cargar_usuarios.py "C:\\...\\Usuarios
 - Hudbay y KP → firmantes externos (sin cuenta: firman por enlace + código al correo).
 - Quien ya existe (mismo correo) no se duplica; con --actualizar se actualizan nombre, cargo, rol y administrador.
 
-Roles PROVISIONALES según el cargo (decisiones 1 a 4 de la reunión; se cambian desde la app):
+Rol: de la columna "Cargo en el sistema" (Administrador, Supervisor de calidad, Operaciones, Topografía,
+Control documentario; Hudbay y KP son firmantes externos). Si falta, se deduce del cargo:
   Jefe de Calidad → jefe_calidad · Jefe de Campo → operaciones ·
   Jefe de Topografía, Técnico Proyectista, Asistente de Oficina Técnica → topografia · el resto → supervisor_calidad
 """
@@ -34,9 +35,22 @@ def rol_por_cargo(cargo):
         return "jefe_calidad"
     if "jefe de campo" in c:
         return "operaciones"
-    if "topografia" in c or "proyectista" in c or "oficina tecnica" in c:
+    if "proyectista" in c or "oficina tecnica" in c or "cadista" in c:
+        return "cadista"
+    if "topografia" in c or "topografo" in c:
         return "topografia"
     return "supervisor_calidad"
+
+
+# "Cargo en el sistema" del Excel → rol. "Administrador" toma el rol según su cargo (el permiso de administrador
+# lo da la columna ADMINISTRADOR).
+ROL_SISTEMA = {"supervisor de calidad": "supervisor_calidad", "operaciones": "operaciones", "topografia": "topografia",
+               "cadista": "cadista",
+               "control documentario": "control_documentario", "jefe de calidad": "jefe_calidad"}
+
+
+def rol_de(p):
+    return ROL_SISTEMA.get(_sin_tildes(p.get("rol_sistema", "")).strip()) or rol_por_cargo(p["cargo"])
 
 
 def empresa_corta(razon_social):
@@ -55,12 +69,14 @@ def leer_excel(ruta):
     col = {nombre: cab.index(nombre) for nombre in ("nombre", "correo", "cargo") if nombre in cab}
     col["empresa"] = next(i for i, x in enumerate(cab) if x.startswith("empres"))
     col["admin"] = next(i for i, x in enumerate(cab) if x.startswith("administrador"))
+    col["rol"] = next((i for i, x in enumerate(cab) if x.startswith("cargo en el sistema")), None)
     for f in filas[1:]:
         if not f or not f[col["correo"]]:
             continue
         yield {"nombre": str(f[col["nombre"]]).strip(), "email": str(f[col["correo"]]).strip().lower(),
                "cargo": str(f[col["cargo"]] or "").strip(), "empresa": empresa_corta(str(f[col["empresa"]] or "")),
-               "admin": _sin_tildes(str(f[col["admin"]] or "")).strip() == "si"}
+               "admin": _sin_tildes(str(f[col["admin"]] or "")).strip() == "si",
+               "rol_sistema": str(f[col["rol"]] or "") if col["rol"] is not None else ""}
 
 
 def main():
@@ -81,7 +97,7 @@ def main():
             externos += 1
             print(f"  firmante externo: {p['nombre']} ({p['empresa']})")
             continue
-        rol = rol_por_cargo(p["cargo"])
+        rol = rol_de(p)
         existente = db.fila("select id from perfil where email = ?", p["email"])
         if existente:
             if actualizar:

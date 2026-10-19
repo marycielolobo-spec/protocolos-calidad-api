@@ -20,7 +20,7 @@ POSTGRES = bool(config.DATABASE_URL)
 VERSION_ESQUEMA = 4      # subirlo cuando cambian las tablas (SQLite: la base de prueba anterior se respalda y se crea de nuevo)
 
 ESQUEMA = """
--- rol: supervisor_calidad | jefe_calidad | control_documentario | operaciones | topografia (cadista). es_admin: da de alta usuarios.
+-- rol: supervisor_calidad | jefe_calidad | control_documentario | operaciones | cadista | topografia. es_admin: da de alta usuarios.
 -- Con Supabase, id = el id del usuario en Supabase Auth.
 create table if not exists perfil (
   id text primary key, nombre text not null, cargo text, email text not null unique,
@@ -278,7 +278,7 @@ PERFILES_DEMO = [
     ("Supervisor Calidad (demo)", "Supervisor de Calidad", "supervisor@demo", "supervisor_calidad"),
     ("Jefe de Calidad (demo)", "Jefe de Calidad", "jefe.calidad@demo", "jefe_calidad"),
     ("Ing. Operaciones (demo)", "Ingeniero de Campo", "operaciones@demo", "operaciones"),
-    ("Cadista (demo)", "Cadista", "cadista@demo", "topografia"),
+    ("Cadista (demo)", "Cadista", "cadista@demo", "cadista"),
     ("Analista Control Documentario (demo)", "Analista de Control Documentario", "control.doc@demo", "control_documentario"),
 ]
 CONTACTOS_DEMO = [

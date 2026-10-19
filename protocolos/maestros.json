@@ -1,5 +1,5 @@
 {
-  "_nota": "Datos maestros para los desplegables. Se cargan al arrancar el servidor. Fuente: LP Ent y Est V1.xlsx (ST.CA.PE.005.F001) y QC Index RC. Los planos de TMF, WRF y MIS están pendientes (los enviará Calidad). Correlativos (Codificación de Registros.xlsx): TMF sin código de entregable (ATF-001); los demás con código (ATF-RC-001, ATF-WRF-001).",
+  "_nota": "Datos maestros para los desplegables. Se cargan al arrancar el servidor. Fuente: LP Ent y Est V1.xlsx (ST.CA.PE.005.F001) y QC Index RC. Planos: TMF del índice “5.0 PLANOS TMF 4143.80 msnm” (sin la portada 8740), WRF de “PLANOS CONSOLIDADO WRF” (Knight Piésold, 31/07/2026); MIS aún sin trabajos ni planos. Correlativos (Codificación de Registros.xlsx): TMF sin código de entregable (ATF-001); los demás con código (ATF-RC-001, ATF-WRF-001).",
   "proyecto": {
     "nombre": "MINA CONSTANCIA",
     "nombre_contrato": "HBM-CC-001115-26 Control de Calidad QC – Laboratorio 2026 - 2030",
@@ -19,7 +19,7 @@
         { "codigo": "DDR", "nombre": "Dique del depósito de relaves (TMF) - VALLE 3" },
         { "codigo": "DDR", "nombre": "Dique del depósito de relaves (TMF) - VALLE 4" }
       ],
-      "planos": ["8832 Rev.0", "8834 Rev.0"]
+      "planos": ["8742 (Rev. 0)", "8830 (Rev. 0)", "8832 (Rev. 0)", "8834 (Rev. 0)", "8836 (Rev. 0)", "8840 (Rev. 0)", "8841 (Rev. 0)", "8842 (Rev. 0)", "8845 (Rev. 0)", "8846 (Rev. 0)", "8847 (Rev. 0)", "8848 (Rev. 0)", "8850 (Rev. 0)", "8851 (Rev. 0)", "8853 (Rev. 0)", "8854 (Rev. 0)", "8856 (Rev. 0)", "8857 (Rev. 0)", "8860 (Rev. 0)", "8861 (Rev. 0)", "8862 (Rev. 0)", "8865 (Rev. 0)", "8866 (Rev. 0)", "8867 (Rev. 0)", "8870 (Rev. 0)", "8871 (Rev. 0)", "8876 (Rev. 0)", "8877 (Rev. 0)", "8878 (Rev. 0)", "8880 (Rev. 0)"]
     },
     {
       "codigo": "RC", "nombre": "Reservorio Cunahuiri",
@@ -39,7 +39,7 @@
       "estructuras": [
         { "codigo": "WRF", "nombre": "Depósito de Desmonte (WRF) - Buttress" }
       ],
-      "planos": []
+      "planos": ["201-557-71-ING-CI-DWG-0001 (Rev. 0)", "201-557-71-ING-CI-DWG-0002 (Rev. 0)", "201-557-71-ING-CI-DWG-0003 (Rev. 0)", "201-557-71-ING-CI-DWG-0004 (Rev. 0)", "201-557-71-ING-CI-DWG-0005 (Rev. 0)", "201-557-71-ING-CI-DWG-0006 (Rev. 0)", "201-557-71-ING-CI-DWG-0007 (Rev. 0)", "201-557-71-ING-CI-DWG-0008 (Rev. 0)", "201-557-71-ING-CI-DWG-0009 (Rev. 0)", "201-557-71-ING-CI-DWG-0010 (Rev. 0)"]
     },
     {
       "codigo": "MIS", "nombre": "Misceláneos",

@@ -90,7 +90,7 @@ print("Flujo completo de protocolos")
 ses = api("GET", "/sesion")
 por_rol = {p["rol"]: p["id"] for p in ses["perfiles"]}
 sup, jefe, ops, ana, cad = (por_rol[r] for r in ("supervisor_calidad", "jefe_calidad", "operaciones", "control_documentario",
-                                                  "topografia"))
+                                                  "cadista"))
 c.headers["X-Usuario"] = sup        # consultas sin usuario explícito: como el supervisor de Calidad
 kp = ses["contactos"][0]["id"]
 tipos = api("GET", "/tipos")
@@ -367,17 +367,24 @@ r = api("POST", "/protocolos", ops, 403, json={"tipo_id": fund["id"], "origen": 
 ok("rol" in r["error"], "Operaciones no puede crear protocolos (solo revisa y firma)")
 api("GET", "/usuarios", sup, 403)
 ok(True, "Solo un administrador ve la gestión de usuarios")
-r = api("POST", "/usuarios", jefe, json={"nombre": "Topógrafo de prueba", "email": "topo@demo.local", "cargo": "Técnico",
-                                          "rol": "topografia"})
-ok(r["usuario"]["rol"] == "topografia" and r["usuario"]["debe_cambiar_clave"] == 1,
+r = api("POST", "/usuarios", jefe, json={"nombre": "Cadista de prueba", "email": "topo@demo.local", "cargo": "Técnico",
+                                          "rol": "cadista"})
+ok(r["usuario"]["rol"] == "cadista" and r["usuario"]["debe_cambiar_clave"] == 1,
    "El administrador da de alta un usuario (debe cambiar su clave)")
 topo = r["usuario"]["id"]
-api("POST", "/usuarios", jefe, 400, json={"nombre": "Repetido", "email": "topo@demo.local", "rol": "topografia"})
+api("POST", "/usuarios", jefe, 400, json={"nombre": "Repetido", "email": "topo@demo.local", "rol": "cadista"})
 ok(True, "No se repiten correos de usuario")
 topografico = next(t_ for t_ in tipos if t_["codigo"] == "ST.CA.PC.001.F001")
 api("POST", "/protocolos", topo, json={"tipo_id": topografico["id"], "origen": "solicitud_operaciones"})
 r = api("POST", "/protocolos", topo, 403, json={"tipo_id": fund["id"], "origen": "solicitud_operaciones"})
-ok("Topografía solo llena el Reporte Topográfico" in r["error"], "Topografía solo puede llenar el Reporte Topográfico")
+ok("el cadista solo llena el Reporte Topográfico" in r["error"], "El cadista solo puede llenar el Reporte Topográfico")
+jt = api("POST", "/usuarios", jefe, json={"nombre": "Jefe de Topografía", "email": "jefe.topo@demo.local", "rol": "topografia"})
+jt = jt["usuario"]["id"]
+db_ = __import__("servidor.db", fromlist=["x"])
+db_.ejecutar("update perfil set debe_cambiar_clave = 0 where id = ?", jt)
+r = api("POST", "/protocolos", jt, 403, json={"tipo_id": topografico["id"], "origen": "solicitud_operaciones"})
+ok("los hace el cadista" in r["error"] and api("GET", "/topografia/reportes", jt) is not None,
+   "Topografía consulta los reportes pero no los crea")
 api("PATCH", f"/usuarios/{topo}", jefe, json={"activo": False})
 api("GET", "/tipos", topo, 401)
 ok(True, "Usuario desactivado ya no entra")
