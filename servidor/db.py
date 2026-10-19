@@ -279,6 +279,7 @@ PERFILES_DEMO = [
     ("Jefe de Calidad (demo)", "Jefe de Calidad", "jefe.calidad@demo", "jefe_calidad"),
     ("Ing. Operaciones (demo)", "Ingeniero de Campo", "operaciones@demo", "operaciones"),
     ("Cadista (demo)", "Cadista", "cadista@demo", "cadista"),
+    ("Consulta (demo)", "Jefe de Laboratorio", "consulta@demo", "consulta"),
     ("Analista Control Documentario (demo)", "Analista de Control Documentario", "control.doc@demo", "control_documentario"),
 ]
 CONTACTOS_DEMO = [

@@ -45,7 +45,7 @@ def rol_por_cargo(cargo):
 # "Cargo en el sistema" del Excel → rol. "Administrador" toma el rol según su cargo (el permiso de administrador
 # lo da la columna ADMINISTRADOR).
 ROL_SISTEMA = {"supervisor de calidad": "supervisor_calidad", "operaciones": "operaciones", "topografia": "topografia",
-               "cadista": "cadista",
+               "cadista": "cadista", "consulta": "consulta", "solo lectura": "consulta",
                "control documentario": "control_documentario", "jefe de calidad": "jefe_calidad"}
 
 

@@ -383,6 +383,12 @@ jt = jt["usuario"]["id"]
 db_ = __import__("servidor.db", fromlist=["x"])
 db_.ejecutar("update perfil set debe_cambiar_clave = 0 where id = ?", jt)
 r = api("POST", "/protocolos", jt, 403, json={"tipo_id": topografico["id"], "origen": "solicitud_operaciones"})
+lec = api("POST", "/usuarios", jefe, json={"nombre": "Solo lectura", "email": "lectura@demo.local", "rol": "consulta"})["usuario"]["id"]
+db_.ejecutar("update perfil set debe_cambiar_clave = 0 where id = ?", lec)
+api("POST", "/protocolos", lec, 403, json={"tipo_id": fund["id"], "origen": "solicitud_operaciones"})
+api("POST", "/paquetes", lec, 403, json={"instancias": [C], "contacto_id": kp})
+ok(len(api("GET", "/protocolos", lec)) > 0 and c.get(f"/api/protocolos/{R}/pdf", headers={"X-Usuario": lec}).status_code == 200,
+   "Consulta: ve la bandeja y los PDF, pero no crea ni envía nada")
 ok("los hace el cadista" in r["error"] and api("GET", "/topografia/reportes", jt) is not None,
    "Topografía consulta los reportes pero no los crea")
 api("PATCH", f"/usuarios/{topo}", jefe, json={"activo": False})

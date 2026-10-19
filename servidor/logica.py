@@ -40,7 +40,8 @@ ROL_TITULO = {"elaborado": "Elaborado por", "revisado_aprobado": "Revisado / Apr
 ROLES = {"supervisor_calidad": "Calidad (elabora protocolos)", "jefe_calidad": "Jefatura de Calidad",
          "control_documentario": "Control Documentario (valida antes de Operaciones)",
          "operaciones": "Operaciones (revisa y aprueba)", "cadista": "Cadista (hace el reporte topográfico)",
-         "topografia": "Topografía (consulta los reportes topográficos)"}
+         "topografia": "Topografía (consulta los reportes topográficos)",
+         "consulta": "Consulta (solo lectura: bandeja, protocolos, PDF y QC Index)"}
 CALIDAD = {"supervisor_calidad", "jefe_calidad"}
 TOPOGRAFICO = "ST.CA.PC.001.F001"         # el único formato que llena Topografía
 
