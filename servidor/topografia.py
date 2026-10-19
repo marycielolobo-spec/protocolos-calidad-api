@@ -263,6 +263,8 @@ def leer_levantamiento(nombre, datos):
 def subir_levantamiento(yo, id_, nombre, datos):
     if not nombre.lower().endswith(EXTENSIONES_LEVANTAMIENTO):
         raise ErrorNegocio("Suba el CSV del levantamiento (.csv, .txt o .xlsx)")
+    if len(datos) > 2 * 1024 * 1024:
+        raise ErrorNegocio("El archivo del levantamiento supera 2 MB")
     puntos = leer_levantamiento(nombre, datos)
     with db.transaccion():
         i = _inst(id_)

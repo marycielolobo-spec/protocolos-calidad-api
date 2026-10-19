@@ -7,6 +7,7 @@ Usa el entregable MIS y devuelve los contadores a su valor anterior: no consume 
 import base64
 import io
 import os
+os.environ["SEGUNDOS_ENTRE_CODIGOS"] = "0"      # las pruebas piden códigos seguidos
 import re
 import secrets
 import sys

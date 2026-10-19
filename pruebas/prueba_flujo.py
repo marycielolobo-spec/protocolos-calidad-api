@@ -5,6 +5,7 @@ Uso:  .venv\\Scripts\\python pruebas\\prueba_flujo.py
 import base64
 import io
 import os
+os.environ["SEGUNDOS_ENTRE_CODIGOS"] = "0"      # las pruebas piden códigos seguidos
 import re
 import sys
 import tempfile

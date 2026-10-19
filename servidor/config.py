@@ -56,6 +56,16 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
 SUPABASE_PUBLISHABLE_KEY = os.environ.get("SUPABASE_PUBLISHABLE_KEY", "")
 SUPABASE_SECRET_KEY = os.environ.get("SUPABASE_SECRET_KEY", "")
 SUPABASE = bool(SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY and SUPABASE_SECRET_KEY)
+
+# Protecciones
+EN_PRODUCCION = bool(os.environ.get("VERCEL"))              # Vercel define VERCEL=1 en sus servidores
+SEGUNDOS_ENTRE_CODIGOS = int(os.environ.get("SEGUNDOS_ENTRE_CODIGOS", "60"))   # no se piden códigos en ráfaga
+MAX_ADJUNTO_MB = 25
+if EN_PRODUCCION and not SUPABASE:
+    # Sin Supabase el sistema entra en modo demo (usuario elegido con "Actuar como"): jamás en producción
+    raise RuntimeError("Producción sin Supabase configurado: faltan SUPABASE_URL / claves en las variables de entorno")
+if EN_PRODUCCION and "*" in CORS_ORIGENES:
+    raise RuntimeError("Producción con CORS abierto: defina CORS_ORIGENES con la dirección de las pantallas")
 BUCKET = os.environ.get("SUPABASE_BUCKET", "protocolos")
 
 DIAS_VENCE_ENLACE = 15          # enlace del portal para KP / Hudbay

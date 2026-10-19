@@ -42,6 +42,11 @@ def _error_auth(request: Request, e: auth.ErrorAuth):
 async def _sin_cache(request: Request, siguiente):
     r = await siguiente(request)
     r.headers["Cache-Control"] = "no-store"
+    # Cabeceras de seguridad estándar (OWASP)
+    r.headers["X-Content-Type-Options"] = "nosniff"
+    r.headers["X-Frame-Options"] = "DENY"
+    r.headers["Referrer-Policy"] = "no-referrer"
+    r.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return r
 
 

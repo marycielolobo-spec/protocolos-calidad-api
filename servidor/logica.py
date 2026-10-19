@@ -336,6 +336,8 @@ def guardar_valor(yo, id_, valor):
 def subir_adjunto(yo, id_, nombre, datos, tipo, ref_schema):
     if not re.search(r"\.(pdf|png|jpe?g)$", nombre, re.I):
         raise ErrorNegocio("Solo se aceptan archivos PDF, PNG o JPG")
+    if len(datos) > config.MAX_ADJUNTO_MB * 1024 * 1024:
+        raise ErrorNegocio(f"El archivo supera {config.MAX_ADJUNTO_MB} MB")
     with db.transaccion():
         i = _inst(id_)
         _editable(i)
@@ -853,6 +855,10 @@ def solicitar_codigo(token):
     p = _paquete_por_token(token)
     if p["cerrado_at"]:
         raise ErrorNegocio("Este paquete ya fue respondido")
+    if p["otp_expira"]:                       # el código anterior se emitió hace menos de un minuto
+        emitido = datetime.fromisoformat(p["otp_expira"]) - timedelta(minutes=config.MINUTOS_VENCE_CODIGO)
+        if (datetime.now(timezone.utc) - emitido).total_seconds() < config.SEGUNDOS_ENTRE_CODIGOS:
+            raise ErrorNegocio("Ya se envió un código hace un momento. Espere un minuto para pedir otro.", 429)
     c = _contacto(p["contacto_id"])
     codigo = f"{secrets.randbelow(1_000_000):06d}"
     with db.transaccion():
