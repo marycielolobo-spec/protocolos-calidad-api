@@ -751,6 +751,12 @@ def _generar_hoja_cargo(paq_id):
     c = db.fila("select * from contacto where id = ?", p["contacto_id"])
     proy = proyecto()
     registros = []
+    if p.get("dossier_id"):                      # entrega de un dossier: el PDF consolidado y su QC Index
+        d = db.fila("select * from dossier where id = ?", p["dossier_id"])
+        registros += [{"codigo": "DOSSIER DE CALIDAD", "reg": d["codigo"],
+                       "descripcion": f"{d['titulo']} ({d['protocolos']} registros, {d['paginas']} páginas)"},
+                      {"codigo": f"ST.CA.PR.005.F001 [{proy['codigo_contrato']}]", "reg": d["codigo"],
+                       "descripcion": "QC Index (Control de Registros de Calidad) del mismo periodo"}]
     for it in db.filas("select * from paquete_item where paquete_id = ? order by rowid", paq_id):
         i = _inst(it["instancia_id"])
         t = _tipo(i["tipo_id"])
@@ -779,7 +785,7 @@ def ruta_hoja_cargo(paq_id):
 
 
 def paquetes():
-    ps = db.filas("select * from paquete where es_cambio = 0 order by created_at desc limit 50")
+    ps = db.filas("select * from paquete where es_cambio = 0 and dossier_id is null order by created_at desc limit 50")
     for p in ps:
         p["items"] = db.filas("select * from paquete_item where paquete_id = ?", p["id"])
         p["enlace_demo"] = f"{config.URL_PORTAL}?t={p['token_demo']}" if p["token_demo"] else None
@@ -833,9 +839,12 @@ def revision_obtener(token):
     if p["es_cambio"]:
         cb = db.fila("select * from cambio where id = ?", p["cambio_id"])
         cambios = [{"motivo": cb["motivo"], "descripcion": cb["descripcion"], "solicitado_por": cb["solicitado_por"]}]
+    d = db.fila("select * from dossier where id = ?", p["dossier_id"]) if p.get("dossier_id") else None
+    dossier = d and {"codigo": d["codigo"], "titulo": d["titulo"], "protocolos": d["protocolos"], "paginas": d["paginas"],
+                     "pdf_url": f"/api/revision/{token}/dossier/pdf", "index_url": f"/api/revision/{token}/dossier/xlsx"}
     return {"paquete": {"codigo": p["codigo"], "es_cambio": bool(p["es_cambio"]), "cerrado_at": p["cerrado_at"],
                         "hoja_cargo_url": f"/api/revision/{token}/hoja-cargo" if p["hoja_cargo"] else None,
-                        "recibido_at": p["recibido_at"]},
+                        "recibido_at": p["recibido_at"], "dossier": dossier},
             "contacto": {"nombre": c["nombre"], "empresa": c["empresa"], "correo": _enmascarar(c["email"]),
                          "tiene_firma": almacen.existe(_ruta_firma_contacto(c["id"]))},
             "maestros": maestros(), "items": items, "cambios": cambios}
@@ -847,6 +856,16 @@ def revision_pdf(token, instancia_id):
     if not it:
         raise ErrorNegocio("Protocolo no encontrado en este paquete", 404)
     return ruta_pdf(instancia_id, it["version"])
+
+
+def revision_dossier(token, cual):
+    """El cliente descarga el dossier o su QC Index con su enlace personal."""
+    p = _paquete_por_token(token)
+    d = db.fila("select * from dossier where id = ?", p["dossier_id"]) if p.get("dossier_id") else None
+    if not d:
+        raise ErrorNegocio("Este enlace no corresponde a un dossier", 404)
+    ruta = d["ruta_pdf"] if cual == "pdf" else d["ruta_xlsx"]
+    return ruta, f"{d['codigo']}.pdf" if cual == "pdf" else f"{d['codigo']}_QC-Index.xlsx"
 
 
 def revision_hoja_cargo(token):
@@ -947,7 +966,7 @@ def revision_decidir(token, decisiones, codigo, firma_imagen, contexto=None, ori
     """KP / Hudbay acepta o rechaza cada protocolo y firma. Los aceptados quedan firmados en ese momento.
     Con guardar=True (imagen cargada) la firma queda registrada para sus próximas firmas."""
     p = _paquete_por_token(token)
-    if p["es_cambio"]:
+    if p["es_cambio"] or p.get("dossier_id"):
         raise ErrorNegocio("Acción inválida")
     if not decisiones:
         raise ErrorNegocio("Marque Aceptar o Rechazar en al menos un protocolo")

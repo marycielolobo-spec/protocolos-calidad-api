@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 from . import config
 
 POSTGRES = bool(config.DATABASE_URL)
-VERSION_ESQUEMA = 4      # subirlo cuando cambian las tablas (SQLite: la base de prueba anterior se respalda y se crea de nuevo)
+VERSION_ESQUEMA = 5      # subirlo cuando cambian las tablas (SQLite: la base de prueba anterior se respalda y se crea de nuevo)
 
 ESQUEMA = """
 -- rol: supervisor_calidad | jefe_calidad | control_documentario | operaciones | cadista | topografia. es_admin: da de alta usuarios.
@@ -76,7 +76,7 @@ create table if not exists paquete (
   id text primary key, codigo text not null unique, contacto_id text not null references contacto(id),
   token_hash text not null unique, token_demo text, enviado_por text references perfil(id),
   es_cambio integer not null default 0, cambio_id text, expira_at text not null, cerrado_at text,
-  hoja_cargo text, recibido_firma text, recibido_at text,
+  hoja_cargo text, recibido_firma text, recibido_at text, dossier_id text,
   otp_hash text, otp_expira text, otp_intentos integer not null default 0,
   created_at text not null);
 create table if not exists paquete_item (
@@ -101,6 +101,11 @@ create table if not exists equipo (
   serie text primary key, rieme text, descripcion text, marca text, modelo text not null, certificado text,
   fecha_calibracion text, proxima_calibracion text, activo integer not null default 1, orden integer not null default 0);
 create table if not exists topografo (nombre text primary key, orden integer not null default 0);
+-- Dossier de calidad: PDF consolidado de protocolos aprobados (mensual, por rango o de todo el contrato)
+create table if not exists dossier (
+  id text primary key, codigo text not null unique, titulo text, filtros text, estado text not null default 'pendiente',
+  mensaje text, protocolos integer, paginas integer, tamano integer, ruta_pdf text, ruta_xlsx text,
+  creado_por text references perfil(id), created_at text not null, generado_at text);
 create table if not exists meta (clave text primary key, valor text);
 """
 
@@ -122,7 +127,8 @@ def _esquema_postgres():
 
 
 # Columnas que guardan JSON (se convierten solas a dict/list al leer)
-COLUMNAS_JSON = {"roles", "schema", "qc_index", "solicitud", "cabecera", "respuestas", "detalle", "snapshot", "evidencia"}
+COLUMNAS_JSON = {"roles", "schema", "qc_index", "solicitud", "cabecera", "respuestas", "detalle", "snapshot", "evidencia",
+                 "filtros"}
 
 _conexion = None
 _candado = threading.RLock()
@@ -329,6 +335,7 @@ def _crear_tablas():
             _con().execute("alter table perfil add column if not exists debe_cambiar_clave integer not null default 0")
             _con().execute("alter table perfil add column if not exists tiene_sello integer not null default 0")
             _con().execute("alter table instancia add column if not exists vinculado_a text")
+            _con().execute("alter table paquete add column if not exists dossier_id text")
         else:
             _con().executescript(ESQUEMA)
             _con().execute(f"pragma user_version = {VERSION_ESQUEMA}")

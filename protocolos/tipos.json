@@ -18,7 +18,8 @@
           "REALIZADO POR",
           "c:topografo"
         ]
-      ]
+      ],
+      "disciplina": "-"
     },
     "schema": {
       "correlativo": "solo_numero",
@@ -253,7 +254,8 @@
           "TURNO",
           "turno"
         ]
-      ]
+      ],
+      "disciplina": "MOVIMIENTO DE TIERRAS"
     },
     "schema": {
       "secciones": [
@@ -433,7 +435,8 @@
           "TURNO",
           "turno"
         ]
-      ]
+      ],
+      "disciplina": "MOVIMIENTO DE TIERRAS"
     },
     "schema": {
       "secciones": [
@@ -761,7 +764,8 @@
           "TURNO",
           "turno"
         ]
-      ]
+      ],
+      "disciplina": "CONCRETO"
     },
     "schema": {
       "secciones": [
@@ -1166,7 +1170,8 @@
           "TURNO",
           "turno"
         ]
-      ]
+      ],
+      "disciplina": "CONCRETO"
     },
     "schema": {
       "secciones": [
@@ -1345,7 +1350,8 @@
           "TURNO",
           "turno"
         ]
-      ]
+      ],
+      "disciplina": "GEOSINTÉTICOS"
     },
     "schema": {
       "secciones": [
@@ -1572,7 +1578,8 @@
           "TURNO",
           "turno"
         ]
-      ]
+      ],
+      "disciplina": "GEOSINTÉTICOS"
     },
     "schema": {
       "secciones": [
@@ -1744,7 +1751,8 @@
           "TURNO",
           "turno"
         ]
-      ]
+      ],
+      "disciplina": "GEOSINTÉTICOS"
     },
     "schema": {
       "secciones": [
@@ -1989,7 +1997,8 @@
           "TURNO",
           "turno"
         ]
-      ]
+      ],
+      "disciplina": "GEOSINTÉTICOS"
     },
     "schema": {
       "secciones": [

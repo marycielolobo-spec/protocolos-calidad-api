@@ -334,10 +334,50 @@ r = c.get("/api/qc-index?entregable=RC")
 wb = load_workbook(io.BytesIO(r.content))
 ok("A. Fundac" in wb.sheetnames and "A. Relleno" in wb.sheetnames, "QC Index con las mismas hojas que el Excel de Calidad")
 ws = wb["A. Fundac"]
-fila = [cel.value for cel in ws[6]]
+ok(ws["C1"].value == "QC INDEX" and ws["G5"].value == "MOVIMIENTO DE TIERRAS" and ws.cell(1, ws.max_column - 1).value == "ST.CA.PR.005.F002",
+   "QC Index con el encabezado de la plantilla (código, disciplina, mes/año)")
+fila = [cel.value for cel in ws[7]]
 ok(fila[4] == "ST.CA.PC.001.F002 [10203002] - ATF-RC-001" and "Conforme" in fila, "QC Index: registro ATF-RC-001 Conforme")
 ok(fila[10] == 19.51, f"QC Index calcula la longitud desde las progresivas ({fila[10]})")
-ok(ws.max_row == 7, "QC Index filtrado por entregable (solo RC)")
+ok(ws.max_row == 8, "QC Index filtrado por entregable (solo RC)")
+wb2 = load_workbook(io.BytesIO(c.get("/api/qc-index?tipos=ST.CA.PC.002.F001").content))
+ok("A. Fundac" not in wb2.sheetnames and "A. Relleno" in wb2.sheetnames, "QC Index filtrado por tipo de registro")
+wb3 = load_workbook(io.BytesIO(c.get("/api/qc-index?entregable=RC&desde=2000-01-01&hasta=2000-01-31").content))
+ok(wb3["A. Fundac"].max_row == 6 and wb3["A. Fundac"].cell(5, wb3["A. Fundac"].max_column - 1).value == "ENERO 2000",
+   "QC Index por mes: sin registros fuera del periodo y con MES / AÑO")
+
+# Dossier: protocolos aprobados → PDF consolidado + QC Index → enviado al cliente con Hoja de Cargo
+hoy = cab_a["fecha"]
+r = api("GET", f"/dossier/protocolos?entregable=RC&desde={hoy}&hasta={hoy}", sup)
+todos = [x["correlativo"] for x in api("GET", f"/dossier/protocolos?desde={hoy}&hasta={hoy}", sup)["protocolos"]]
+ok([x["correlativo"] for x in r["protocolos"]] == ["ATF-RC-001", "ATF-RC-002"] and r["protocolos"][0]["reporte_topografico"] == "001"
+   and "ID-001" not in todos,
+   "Dossier: solo los aprobados del periodo (con su reporte topográfico)")
+api("POST", "/dossiers", ops, 403, json={"entregable": "RC"})
+r = api("POST", "/dossiers", sup, 400, json={"entregable": "RC", "desde": "2000-01-01", "hasta": "2000-01-31"})
+ok("No hay protocolos aprobados" in r["error"], "Sin aprobados en el periodo: no se arma")
+dos = api("POST", "/dossiers", sup, json={"entregable": "RC", "tipos": ["ST.CA.PC.001.F002"], "desde": hoy, "hasta": hoy})
+d = api("POST", f"/dossiers/{dos['id']}/generar", sup)
+ok(d["estado"] == "listo" and d["protocolos"] == 2 and d["paginas"] >= 5 and dos["codigo"].startswith("DOS-"),
+   f"Dossier {dos['codigo']} armado: {d['paginas']} páginas")
+pdf_d = c.get(f"/api/dossiers/{dos['id']}/pdf")
+txt = texto_pdf(pdf_d.content)
+ok("ÍNDICE DEL DOSSIER" in txt.upper() and "ATF-RC-001" in txt and "BASE H.B.P." in txt and "CONSTANCIA" in txt.upper(),
+   "Dossier: carátula, índice, el protocolo con su reporte topográfico y la constancia de firmas")
+xl = load_workbook(io.BytesIO(c.get(f"/api/dossiers/{dos['id']}/xlsx").content))
+ok("A. Fundac" in xl.sheetnames and "A. Relleno" not in xl.sheetnames, "Dossier acompañado de su QC Index con los mismos filtros")
+api("GET", "/dossiers", ops, 403)
+api("POST", f"/dossiers/{dos['id']}/enviar", ops, 403, json={"contacto_id": kp})
+env = api("POST", f"/dossiers/{dos['id']}/enviar", sup, json={"contacto_id": kp})
+td = env["enlace_demo"].split("t=")[1]
+rv = api("GET", f"/revision/{td}")
+ok(rv["paquete"]["dossier"]["codigo"] == dos["codigo"] and c.get(rv["paquete"]["dossier"]["pdf_url"]).status_code == 200,
+   "El cliente ve el dossier y lo descarga con su enlace")
+ok("DOSSIER DE CALIDAD" in texto_pdf(c.get(f"/api/revision/{td}/hoja-cargo").content).upper(), "Hoja de Cargo del dossier")
+api("POST", f"/revision/{td}/codigo")
+api("POST", f"/revision/{td}/recepcion", json={"codigo": ultimo_codigo(), "firma": firma_png()})
+ok(api("GET", "/dossiers", sup)[0]["envios"][0]["recibido_at"], "Recepción del dossier confirmada y registrada")
+ok(not any(p_["codigo"] == env["codigo"] for p_ in api("GET", "/paquetes", sup)), "Los envíos de dossier no se mezclan con los paquetes")
 
 # Control de cambios
 api("PUT", f"/protocolos/{A}/valor", sup, 400, json={"cabecera": cab_a, "respuestas": resp_a, "conforme": True})

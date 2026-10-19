@@ -417,6 +417,50 @@ def hoja_cargo_pdf(info):
 # ---------------------------------------------------------------------------
 # Adjuntos y armado
 # ---------------------------------------------------------------------------
+def dossier_portada(info):
+    """info: {codigo, titulo, proyecto, obra, contrato, cliente, entregable, periodo, protocolos, generado, tipos: [(nombre, n)]}"""
+    grande = ParagraphStyle("dos-t", parent=E["titulo"], fontSize=20, leading=24, textColor=AZUL)
+    datos = [[_p("PROYECTO", "etq"), _p(info["proyecto"])], [_p("OBRA", "etq"), _p(info["obra"])],
+             [_p("CONTRATO", "etq"), _p(info["contrato"])], [_p("CLIENTE", "etq"), _p(info["cliente"])],
+             [_p("ENTREGABLE", "etq"), _p(info["entregable"])], [_p("PERIODO", "etq"), _p(info["periodo"])],
+             [_p("REGISTROS", "etq"), _p(str(info["protocolos"]))], [_p("GENERADO", "etq"), _p(fecha_hora(info["generado"]))]]
+    t = Table(datos, colWidths=[40 * mm, ANCHO - 40 * mm])
+    t.setStyle(_estilo_tabla([("BACKGROUND", (0, 0), (0, -1), FONDO)]))
+    tipos = Table([[_p("TIPO DE REGISTRO", "etq"), _p("REGISTROS", "etq")]] + [[_p(n), _p(str(c))] for n, c in info["tipos"]],
+                  colWidths=[ANCHO - 30 * mm, 30 * mm])
+    tipos.setStyle(_estilo_tabla([("BACKGROUND", (0, 0), (-1, 0), FONDO), ("ALIGN", (1, 0), (1, -1), "CENTER")]))
+    historia = [_encabezado("Dossier de calidad", info["codigo"], ["Protocolos aprobados"]), Spacer(1, 40 * mm),
+                Paragraph(escape(info["titulo"]), grande), Spacer(1, 18 * mm), t, Spacer(1, 10 * mm), tipos]
+    return _documento(historia, f"{info['codigo']} — Carátula")
+
+
+def dossier_indice(info, filas):
+    """filas: [{grupo}] (título de cada tipo de registro) o [{registro, fecha, estructura, rt, pagina}]."""
+    datos = [[_p("N°", "etq"), _p("N° DE REGISTRO", "etq"), _p("FECHA", "etq"), _p("ESTRUCTURA", "etq"),
+              _p("REPORTE TOPOGRÁFICO", "etq"), _p("PÁG.", "etq")]]
+    estilo = [("BACKGROUND", (0, 0), (-1, 0), FONDO), ("ALIGN", (-1, 0), (-1, -1), "RIGHT")]
+    n = 0
+    for f in filas:
+        if "grupo" in f:
+            estilo += [("SPAN", (0, len(datos)), (-1, len(datos))), ("BACKGROUND", (0, len(datos)), (-1, len(datos)), FONDO)]
+            datos.append([_p(f["grupo"].upper(), "neg"), "", "", "", "", ""])
+            continue
+        n += 1
+        datos.append([_p(str(n)), _p(f["registro"]), _p(fecha_hora(f["fecha"])), _p(f["estructura"]),
+                      _p(f["rt"] or "-"), _p(str(f.get("pagina", "")))])
+    t = Table(datos, colWidths=[10 * mm, 70 * mm, 20 * mm, ANCHO - 140 * mm, 26 * mm, 14 * mm], repeatRows=1)
+    t.setStyle(_estilo_tabla(estilo))
+    historia = [_encabezado("Índice del dossier", info["codigo"], [info["periodo"]]), Spacer(1, 6), t]
+    return _documento(historia, f"{info['codigo']} — Índice")
+
+
+def separador_pdf(titulo, subtitulo, codigo):
+    grande = ParagraphStyle("dos-s", parent=E["titulo"], fontSize=18, leading=22, textColor=AZUL)
+    historia = [_encabezado("Dossier de calidad", codigo, []), Spacer(1, 90 * mm), Paragraph(escape(titulo.upper()), grande),
+                Spacer(1, 6 * mm), _p(subtitulo, "centro")]
+    return _documento(historia, f"{codigo} — {titulo}")
+
+
 def imagen_a_pdf(datos):
     """Una foto o escaneo (PNG/JPG) → una página A4 centrada."""
     img = PilImage.open(io.BytesIO(datos))

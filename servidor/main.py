@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import almacen, auth, config, db, logica, qc_index, topografia
+from . import almacen, auth, config, db, dossier, logica, qc_index, topografia
 from .logica import ErrorNegocio
 
 app = FastAPI(title="Protocolos de Calidad — Stracon / Constancia", version="3.0")
@@ -357,9 +357,13 @@ def decidir_cambio(cambio_id: str, datos: Decision, yo: dict = Depends(usuario))
 
 
 @app.get("/api/qc-index")
-def descargar_qc_index(entregable: str | None = None, _: dict = Depends(usuario)):
+def descargar_qc_index(entregable: str | None = None, tipos: str | None = None, desde: str | None = None,
+                       hasta: str | None = None, _: dict = Depends(usuario)):
+    """QC Index en Excel. Filtros opcionales: entregable, formatos (códigos separados por comas) y fechas."""
+    f = dossier.filtros(entregable, None, desde, hasta)
+    sel = [x for x in (tipos or "").split(",") if x] or None
     sufijo = f"_{entregable}" if entregable else ""
-    return Response(qc_index.generar(entregable or None),
+    return Response(qc_index.generar(f["entregable"], sel, dossier._fecha(f["desde"], ""), dossier._fecha(f["hasta"], "")),
                     media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     headers={"Content-Disposition": f'attachment; filename="QC-Index{sufijo}.xlsx"'})
 
@@ -444,6 +448,66 @@ class Vinculo(BaseModel):
 
 class Topografo(BaseModel):
     nombre: str
+
+
+class DatosDossier(BaseModel):
+    entregable: str | None = None
+    tipos: list[str] = []
+    desde: str | None = None
+    hasta: str | None = None
+    titulo: str | None = None
+
+
+class EnvioDossier(BaseModel):
+    contacto_id: str
+
+
+@app.get("/api/dossier/protocolos")
+def dossier_protocolos(entregable: str | None = None, tipos: str | None = None, desde: str | None = None,
+                       hasta: str | None = None, yo: dict = Depends(usuario)):
+    return dossier.protocolos(yo, entregable=entregable, tipos=tipos, desde=desde, hasta=hasta)
+
+
+@app.get("/api/dossiers")
+def dossier_lista(yo: dict = Depends(usuario)):
+    return dossier.lista(yo)
+
+
+@app.post("/api/dossiers")
+def dossier_crear(datos: DatosDossier, yo: dict = Depends(usuario)):
+    return dossier.crear(yo, datos.model_dump())
+
+
+@app.post("/api/dossiers/{id_}/generar")
+def dossier_generar(id_: str, yo: dict = Depends(usuario)):
+    return dossier.generar(yo, id_)
+
+
+@app.get("/api/dossiers/{id_}/pdf")
+def dossier_pdf(id_: str, yo: dict = Depends(usuario)):
+    return _pdf(dossier.archivo(yo, id_, "pdf"))
+
+
+@app.get("/api/dossiers/{id_}/xlsx")
+def dossier_xlsx(id_: str, yo: dict = Depends(usuario)):
+    ruta, nombre = dossier.archivo(yo, id_, "xlsx")
+    return _archivo(ruta, nombre, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+@app.post("/api/dossiers/{id_}/enviar")
+def dossier_enviar(id_: str, datos: EnvioDossier, yo: dict = Depends(usuario)):
+    return dossier.enviar(yo, id_, datos.contacto_id)
+
+
+@app.get("/api/revision/{token}/dossier/pdf")
+def revision_dossier_pdf(token: str):
+    return _pdf(logica.revision_dossier(token, "pdf"))
+
+
+@app.get("/api/revision/{token}/dossier/xlsx")
+def revision_dossier_xlsx(token: str):
+    ruta, nombre = logica.revision_dossier(token, "xlsx")
+    return _archivo(ruta, nombre, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 
 @app.get("/api/topografia/config")
