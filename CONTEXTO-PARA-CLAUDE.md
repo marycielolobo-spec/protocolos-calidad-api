@@ -61,7 +61,15 @@ La subcarpeta `protocolos-calidad\` dentro del proyecto es una copia vieja (Supa
   el protocolo; va en la Hoja de Cargo. Config admin: Excel anual de equipos, topógrafos (tabla topografo), georreferencia.
 - Geoceldas ST.CA.PC.011.F001 (AIGC) cargado. Correlativos: TMF sin código (ATF-001), RC/WRF con código. Entregable WRF
   sin planos aún. MIS se queda por ahora. Firma "Elaborado por" muestra la fecha del protocolo (constancia: hora real).
-- Pruebas: pruebas/prueba_flujo.py (94, local) y prueba_supabase.py (20) y pruebas/prueba_supabase.py (19, contra Supabase real; borra lo que crea).
+- Roles (19 oct): cadista (hace el reporte topográfico: Pamela Choque, Luis Ramos, Luis Medrano) ≠ topografia (consulta:
+  Juan Colquehuanca, jefe, y Marcos Reyes); consulta = solo lectura (Rodolfo Jove). cargar_usuarios usa la columna
+  "Cargo en el sistema". Planos TMF (30) y WRF (10) cargados; MIS sin planos.
+- Dossier (servidor/dossier.py, pantalla /dossier): filtros entregable + tipos + periodo (mes, rango, todo); solo
+  aprobados; PDF carátula+índice+separador por tipo+protocolos; QC Index con los mismos filtros; envío al cliente con
+  Hoja de Cargo y acuse. QC Index con el encabezado de la plantilla (disciplina por formato en tipos.json).
+- PENDIENTE: georreferencia por entregable (el residente dice que cambia; Juan Colquehuanca validará la lista de BM).
+  Contratos: hoy uno solo (10203002); la usuaria buscará los demás.
+- Pruebas: pruebas/prueba_flujo.py (108, local) y prueba_supabase.py (20) y pruebas/prueba_supabase.py (19, contra Supabase real; borra lo que crea).
 - Lovable (quality-standards-hub): /ingresar, /cambiar-clave, /usuarios, /mi-firma; client.ts maneja token y renovación.
 - Las pantallas HTML de web/ son la demo vieja: con Supabase en .env no tienen login. Las pantallas oficiales son las de Lovable.
 
