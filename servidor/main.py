@@ -525,6 +525,15 @@ async def topo_equipos(archivo: UploadFile = File(...), yo: dict = Depends(usuar
     return topografia.importar_equipos(yo, await archivo.read())
 
 
+class Mostrar(BaseModel):
+    mostrar: bool
+
+
+@app.patch("/api/topografia/equipos/{serie}")
+def topo_mostrar_equipo(serie: str, datos: Mostrar, yo: dict = Depends(usuario)):
+    return topografia.mostrar_equipo(yo, serie, datos.mostrar)
+
+
 @app.post("/api/topografia/topografos")
 def topo_agregar_topografo(datos: Topografo, yo: dict = Depends(usuario)):
     return topografia.agregar_topografo(yo, datos.nombre)

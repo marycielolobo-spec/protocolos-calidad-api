@@ -285,6 +285,7 @@ PERFILES_DEMO = [
     ("Jefe de Calidad (demo)", "Jefe de Calidad", "jefe.calidad@demo", "jefe_calidad"),
     ("Ing. Operaciones (demo)", "Ingeniero de Campo", "operaciones@demo", "operaciones"),
     ("Cadista (demo)", "Cadista", "cadista@demo", "cadista"),
+    ("Jefe de Topografía (demo)", "Jefe de Topografía", "topografia@demo", "topografia"),
     ("Consulta (demo)", "Jefe de Laboratorio", "consulta@demo", "consulta"),
     ("Analista Control Documentario (demo)", "Analista de Control Documentario", "control.doc@demo", "control_documentario"),
 ]
@@ -326,6 +327,10 @@ def _meta(clave, valor=None):
     return valor
 
 
+# equipo.mostrar: null = según la regla (receptores R8 y estación total); 1/0 = lo decidió Topografía
+COLUMNAS_NUEVAS = [("equipo", "mostrar", "integer")]
+
+
 def _crear_tablas():
     with _candado:
         if POSTGRES:
@@ -339,6 +344,12 @@ def _crear_tablas():
         else:
             _con().executescript(ESQUEMA)
             _con().execute(f"pragma user_version = {VERSION_ESQUEMA}")
+        # Columnas nuevas que se agregan sin rehacer la base (también en la demo local)
+        for tabla, columna, definicion in COLUMNAS_NUEVAS:
+            if POSTGRES:
+                _con().execute(f"alter table {tabla} add column if not exists {columna} {definicion}")
+            elif columna not in [r[1] for r in _con().execute(f"pragma table_info({tabla})").fetchall()]:
+                _con().execute(f"alter table {tabla} add column {columna} {definicion}")
 
 
 def iniciar():

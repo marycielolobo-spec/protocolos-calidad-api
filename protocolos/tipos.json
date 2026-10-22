@@ -182,7 +182,8 @@
               "label": "Elevación",
               "tipo": "number"
             }
-          ]
+          ],
+          "nota": "Tipo de coordenadas: UTM o local (se elige una vez para todos los puntos)."
         },
         {
           "tipo": "campos",
@@ -200,8 +201,7 @@
               "opciones": [
                 "SI",
                 "NO"
-              ],
-              "solo_lectura": true
+              ]
             },
             {
               "id": "topografo",
@@ -220,7 +220,7 @@
           "label": "Plano topográfico",
           "pregunta": "Cargar plano topográfico",
           "tipo_adjunto": "plano",
-          "obligatorio": true
+          "segun_campo": "plano_adjunto"
         }
       ]
     }

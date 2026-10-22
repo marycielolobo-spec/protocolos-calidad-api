@@ -151,19 +151,24 @@ R = api("POST", "/protocolos", cad, json={"tipo_id": topo_t["id"], "origen": "so
 d = api("GET", f"/protocolos/{R}", cad)
 ok(d["inst"]["respuestas"]["checklist"]["c3"]["r"] == "NO" and d["inst"]["respuestas"]["checklist"]["c8"]["r"] == "NA",
    "Actividades fijas: las pone el sistema")
-gnss = next(e for e in conf["equipos"] if e["modelo"] == "R980")
+modelos = [e["modelo"] for e in conf["equipos"]]
+ok("R8-4" in modelos and any("ESTACI" in e["descripcion"] for e in conf["equipos"])
+   and not any(m.startswith(("TSC", "R12", "R980", "AL32")) for m in modelos),
+   "Equipos para el reporte: solo receptores R8 y la estación total")
+gnss = next(e for e in conf["equipos"] if e["modelo"] == "R8-4")
 api("PUT", f"/protocolos/{R}/valor", cad, json={
     "cabecera": cabecera(d, "RC", "Reservorio Cunahuiri", rc["planos"][:1]), "conforme": None,
     "respuestas": {**d["inst"]["respuestas"], "descripcion": "Levantamiento de fundación (prueba)", "observaciones": "no va",
                    "checklist": {"c1": {"r": "NO"}},
-                   "campos": {"equipo_1": gnss["serie"], "topografo": conf["topografos"][0]}}})
+                   "campos": {"equipo_1": gnss["serie"], "topografo": conf["topografos"][0], "calibracion_1": "NO",
+                              "tipo_coordenadas": "Local"}}})
 rr = api("GET", f"/protocolos/{R}", cad)["inst"]["respuestas"]
 ok(rr["checklist"]["c1"]["r"] == "SI" and rr["observaciones"] == "" and rr["tablas"]["georreferencia"][0]["este"] == "200966.792",
    "Nadie cambia actividades, observaciones ni georreferencia")
 eq = rr["tablas"]["equipos"][0]
-ok(eq["marca"] == "TRIMBLE" and eq["serie"] == gnss["serie"] and eq["calibracion"] == "SI" and eq["certificado"] == gnss["certificado"]
-   and rr["campos"]["equipo_medicion"] == f"GPS TRIMBLE R980 {gnss['serie']}",
-   "Se elige el equipo y marca, serie, certificado y calibración salen solos")
+ok(eq["marca"] == "TRIMBLE" and eq["serie"] == gnss["serie"] and eq["calibracion"] == "NO" and eq["certificado"] == gnss["certificado"]
+   and rr["campos"]["equipo_medicion"] == f"GPS TRIMBLE R8-4 {gnss['serie']}",
+   "Se elige el equipo y marca, serie y certificado salen solos; la calibración se puede marcar NO")
 csv_largo = "\n".join(f"{n},8398516.903,203316.548,4227.918" for n in range(1, 18)).encode()
 r = api("POST", f"/protocolos/{R}/levantamiento", cad, 400, files={"archivo": ("largo.csv", csv_largo, "text/csv")})
 ok("16" in r["error"], "CSV con más de 16 puntos: rechazado")
@@ -172,7 +177,7 @@ api("POST", f"/protocolos/{R}/levantamiento", cad, files={"archivo": ("260925-C2
 rr = api("GET", f"/protocolos/{R}", cad)["inst"]["respuestas"]
 pr = rr["tablas"]["puntos_referencia"]
 ok(len(pr) == 2 and pr[0]["norte"] == "8398516.903" and pr[0]["este"] == "203316.548" and pr[1]["elevacion"] == "4228.077"
-   and pr[0]["tipo"] == "UTM" and rr["campos"]["archivo"] == "260925-C2-R COMUN",
+   and pr[0]["tipo"] == "Local" and pr[1]["tipo"] == "Local" and rr["campos"]["archivo"] == "260925-C2-R COMUN",
    "CSV: punto, norte, este y elevación (lo demás se descarta); el archivo se llama como el CSV")
 r = api("POST", f"/protocolos/{R}/enviar-firma", cad, 400, json={"firmantes": {}})
 ok("falta subir" in r["error"], "Sin plano no se envía: el plano es obligatorio")
@@ -452,21 +457,42 @@ wb.active.append(["LOG DE REPORTES DE INSPECCIÓN DE LOS EQUIPOS DE MEDICIÓN Y/
 wb.active.append(["N° RIEME", "FECHA", "PROVEEDOR", "N° OC / OS", "N° GUÍA DE REMISIÓN", "EQUIPOS INSPECCIONADOS", "MARCA",
                   "MODELO", "N° SERIE / CÓDIGO", "ENTIDAD CALIBRADORA", "N° DE CERTIFICADO DE CALIBRACIÓN U OPERATIVIDAD",
                   "FECHA DE CALIBRACIÓN", "FRECUENCIA (meses)", "PRÓXIMA CALIBRACIÓN"])
-wb.active.append(["RIEME-TOP-2027-01", None, "HUDBAY", "-", "-", "RECEPTOR GNSS", "TRIMBLE", "R12i", "NUEVO123", "GEO", "27-OG-0001",
+wb.active.append(["RIEME-TOP-2027-01", None, "HUDBAY", "-", "-", "RECEPTOR GNSS", "TRIMBLE", "R8s", "NUEVO123", "GEO", "27-OG-0001",
                   "2027-03-01", 12, "2028-03-01"])
+wb.active.append(["RIEME-TOP-2027-01", None, "HUDBAY", "-", "-", "CONTROLADOR", "TRIMBLE", "TSC7", "C9", "GEO", "27-OG-0002", None, 12, None])
+wb.active.append(["RIEME-TOP-2027-01", None, "HUDBAY", "-", "-", "ESTACIÓN TOTAL LASER", "TRIMBLE", "S5", "EST1", "GEO", "27-OG-0003",
+                  None, 12, None])
 wb.active.append(["RIEME-TOP-2027-01", None, "HUDBAY", "-", "-", "NIVEL AUTOMATICO", "SPECTRA", "AL32A", "N1", "GEO", "x", None, 12, None])
 xlsx = io.BytesIO()
 wb.save(xlsx)
 api("POST", "/topografia/equipos", cad, 403, files={"archivo": ("eme.xlsx", xlsx.getvalue())})
-api("POST", "/topografia/equipos", jefe, files={"archivo": ("eme.xlsx", xlsx.getvalue())})
+api("POST", "/topografia/equipos", jt, files={"archivo": ("eme.xlsx", xlsx.getvalue())})
 conf = api("GET", "/topografia/config", cad)
-ok([e["modelo"] for e in conf["equipos"]] == ["R12i"], "El Excel de equipos del año reemplaza al anterior (sin nivel automático)")
-ok(api("GET", f"/protocolos/{R}", cad)["inst"]["respuestas"]["tablas"]["equipos"][0]["modelo"] == "R980",
+ok([e["modelo"] for e in conf["equipos"]] == ["R8s", "S5"] and len(conf["equipos_todos"]) == 4,
+   "Topografía sube el Excel del año: se muestran solo el R8 y la estación")
+api("PATCH", "/topografia/equipos/EST1", cad, 403, json={"mostrar": False})
+api("PATCH", "/topografia/equipos/C9", jt, json={"mostrar": True})
+ok([e["modelo"] for e in api("GET", "/topografia/config", cad)["equipos"]] == ["R8s", "TSC7", "S5"],
+   "Topografía puede mostrar u ocultar un equipo")
+ok(api("GET", f"/protocolos/{R}", cad)["inst"]["respuestas"]["tablas"]["equipos"][0]["modelo"] == "R8-4",
    "Los reportes ya hechos conservan su equipo")
 api("POST", "/topografia/topografos", jefe, json={"nombre": "  Topógrafo   Nuevo "})
 ok("Topógrafo Nuevo" in api("DELETE", "/topografia/topografos/Pamela Choque", jefe), "Se agregan y quitan topógrafos")
 api("PUT", "/topografia/georreferencia", cad, 403, json={"punto": "X", "este": 1, "norte": 2, "elevacion": 3})
-api("PUT", "/topografia/georreferencia", jefe, json={"punto": "BM-2", "este": "1", "norte": "2", "elevacion": "3"})
-ok(api("GET", "/topografia/config", cad)["georreferencia"]["punto"] == "BM-2", "La georreferencia se puede modificar (otra unidad)")
+api("PUT", "/topografia/georreferencia", jt, json={"punto": "BM-2", "este": "1", "norte": "2", "elevacion": "3"})
+ok(api("GET", "/topografia/config", cad)["georreferencia"]["punto"] == "BM-2", "La georreferencia la cambia el topógrafo (no el cadista)")
+
+# Plano adjunto = NO: no se exige subirlo
+R2 = api("POST", "/protocolos", cad, json={"tipo_id": topo_t["id"], "origen": "solicitud_operaciones"})["id"]
+d = api("GET", f"/protocolos/{R2}", cad)
+api("PUT", f"/protocolos/{R2}/valor", cad, json={
+    "cabecera": cabecera(d, "RC", "Reservorio Cunahuiri", rc["planos"][:1]), "conforme": None,
+    "respuestas": {**d["inst"]["respuestas"], "descripcion": "Sin plano (prueba)",
+                   "campos": {"equipo_1": "NUEVO123", "topografo": "Topógrafo Nuevo", "plano_adjunto": "NO"}}})
+api("POST", f"/protocolos/{R2}/levantamiento", cad, files={"archivo": ("sin-plano.csv", csv_ok, "text/csv")})
+api("POST", f"/protocolos/{R2}/enviar-firma", cad, json={"firmantes": {}})
+d = api("GET", f"/protocolos/{R2}", cad)
+ok(d["inst"]["estado"] == "revision_topo" and d["inst"]["respuestas"]["adjuntos"]["plano"]["adjunta"] == "NA",
+   "Plano adjunto = NO: se envía sin plano")
 
 print(f"\nTodo correcto: {pasos} verificaciones.")

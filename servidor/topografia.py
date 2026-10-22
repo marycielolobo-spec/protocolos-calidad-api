@@ -45,12 +45,35 @@ def georreferencia():
     return {**GEO_DEFECTO, **(json.loads(guardada) if guardada else {})}
 
 
-def equipos():
-    """Equipos vigentes del Excel. El nivel automático no se usa en los reportes."""
+def _visible_por_regla(e):
+    """Jefe de Topografía: en los reportes solo los receptores R8 y la estación total (no controladores ni nivel)."""
+    desc, modelo = (e["descripcion"] or "").upper(), (e["modelo"] or "").upper()
+    return "ESTACI" in desc or (("GNSS" in desc or "RECEPTOR" in desc) and modelo.startswith("R8"))
+
+
+def equipos(todos=False):
+    """Equipos vigentes del Excel que se eligen en el reporte (todos=True: también los ocultos, para Configuración)."""
     filas = db.filas("select * from equipo where activo = 1 order by orden, modelo")
     hoy = date.today().isoformat()
-    return [{**e, "vencido": bool(e["proxima_calibracion"]) and e["proxima_calibracion"] < hoy}
-            for e in filas if "NIVEL" not in (e["descripcion"] or "").upper()]
+    salida = []
+    for e in filas:
+        visible = bool(e["mostrar"]) if e.get("mostrar") is not None else _visible_por_regla(e)
+        if todos or visible:
+            salida.append({**e, "visible": visible, "vencido": bool(e["proxima_calibracion"]) and e["proxima_calibracion"] < hoy})
+    return salida
+
+
+def _exigir_topografia(yo):
+    """Equipos, topógrafos y georreferencia los mantiene Topografía (o un administrador); el cadista no."""
+    _exigir(yo.get("es_admin") or yo["rol"] == "topografia", "Solo Topografía o un administrador cambian esta configuración")
+
+
+def mostrar_equipo(yo, serie, mostrar):
+    _exigir_topografia(yo)
+    if not db.fila("select serie from equipo where serie = ?", serie):
+        raise ErrorNegocio("Equipo no encontrado", 404)
+    db.ejecutar("update equipo set mostrar = ? where serie = ?", int(bool(mostrar)), serie)
+    return equipos(todos=True)
 
 
 def topografos():
@@ -58,12 +81,13 @@ def topografos():
 
 
 def configuracion():
-    return {"equipos": equipos(), "topografos": topografos(), "georreferencia": georreferencia()}
+    return {"equipos": equipos(), "equipos_todos": equipos(todos=True), "topografos": topografos(),
+            "georreferencia": georreferencia()}
 
 
 def importar_equipos(yo, datos):
     """Reemplaza los equipos con el Excel del año (los que ya no están quedan inactivos; los reportes hechos no cambian)."""
-    L._exigir_admin(yo)
+    _exigir_topografia(yo)
     try:
         wb = openpyxl.load_workbook(io.BytesIO(datos), data_only=True, read_only=True)
     except Exception:
@@ -101,7 +125,7 @@ def importar_equipos(yo, datos):
 
 
 def agregar_topografo(yo, nombre):
-    L._exigir_admin(yo)
+    _exigir_topografia(yo)
     nombre = re.sub(r"\s+", " ", nombre or "").strip()
     if not nombre:
         raise ErrorNegocio("Escriba el nombre del topógrafo")
@@ -111,14 +135,14 @@ def agregar_topografo(yo, nombre):
 
 
 def quitar_topografo(yo, nombre):
-    L._exigir_admin(yo)
+    _exigir_topografia(yo)
     db.ejecutar("delete from topografo where nombre = ?", nombre)
     return topografos()
 
 
 def guardar_georreferencia(yo, datos):
-    """Fija para el proyecto. Solo cambia si el sistema se usa en otra unidad."""
-    L._exigir_admin(yo)
+    """Se mantiene para todos los reportes; la cambia el topógrafo (no el cadista) cuando corresponde."""
+    _exigir_topografia(yo)
     geo = {"punto": str(datos.get("punto") or "").strip(), "tipo": "UTM"}
     if not geo["punto"]:
         raise ErrorNegocio("Indique el punto B.M.")
@@ -134,9 +158,9 @@ def guardar_georreferencia(yo, datos):
 # ---------------------------------------------------------------------------
 # Lo que el sistema llena solo (al guardar y al enviar): nadie lo cambia desde la pantalla
 # ---------------------------------------------------------------------------
-def _equipo_fila(serie):
+def _equipo_fila(serie, calibracion="SI"):
     e = db.fila("select * from equipo where serie = ?", serie) if serie else None
-    return e and {"marca": e["marca"], "modelo": e["modelo"], "serie": e["serie"], "calibracion": "SI",
+    return e and {"marca": e["marca"], "modelo": e["modelo"], "serie": e["serie"], "calibracion": calibracion,
                   "certificado": e["certificado"], "_descripcion": e["descripcion"] or ""}
 
 
@@ -160,9 +184,12 @@ def normalizar(i, t, respuestas):
     filas_previas = (previo.get("tablas") or {}).get("equipos") or []
     filas = []
     for k, n in (("equipo_1", 0), ("equipo_2", 1)):
-        fila = _equipo_fila(campos.get(k))
+        # Calibración: "SI" salvo que indiquen que ese equipo no está calibrado
+        cal = campos.get(f"calibracion_{n + 1}") if campos.get(f"calibracion_{n + 1}") in ("SI", "NO") else "SI"
+        campos[f"calibracion_{n + 1}"] = cal
+        fila = _equipo_fila(campos.get(k), cal)
         if campos.get(k) and not fila:              # equipo dado de baja después: se conserva lo que ya tenía
-            fila = filas_previas[n] if n < len(filas_previas) else {}
+            fila = {**(filas_previas[n] if n < len(filas_previas) else {}), "calibracion": cal}
         filas.append({k2: v for k2, v in (fila or {}).items() if not k2.startswith("_")})
         if n == 0:
             desc = (fila or {}).get("_descripcion", "")
@@ -170,12 +197,17 @@ def normalizar(i, t, respuestas):
                                          f"{fila['serie']}").strip() if fila else ""
     tablas["equipos"] = filas
     tablas["georreferencia"] = [georreferencia()]
-    # Datos de campo y nombre del archivo: solo los cambia la carga del CSV
-    tablas["puntos_referencia"] = (previo.get("tablas") or {}).get("puntos_referencia") or []
+    # Datos de campo y nombre del archivo: solo los cambia la carga del CSV. El tipo (UTM o local) se elige una vez
+    tipo = campos.get("tipo_coordenadas") if campos.get("tipo_coordenadas") in ("UTM", "Local") else "UTM"
+    campos["tipo_coordenadas"] = tipo
+    tablas["puntos_referencia"] = [{**p, "tipo": tipo} for p in (previo.get("tablas") or {}).get("puntos_referencia") or []]
     campos["archivo"] = (previo.get("campos") or {}).get("archivo") or ""
-    campos["plano_adjunto"] = "SI"
+    # Plano adjunto: "SI" salvo que indiquen que no se adjunta (entonces no se exige subirlo)
+    plano = campos.get("plano_adjunto") if campos.get("plano_adjunto") in ("SI", "NO") else "SI"
+    campos["plano_adjunto"] = plano
     r.update(campos=campos, tablas=tablas, observaciones="")
-    r["adjuntos"] = {**r["adjuntos"], "plano": {"adjunta": "SI", "numero": _plano_de(i)}}
+    r["adjuntos"] = {**r["adjuntos"], "plano": {"adjunta": "SI", "numero": _plano_de(i)} if plano == "SI"
+                     else {"adjunta": "NA", "numero": ""}}
     return r
 
 
