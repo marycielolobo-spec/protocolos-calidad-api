@@ -286,9 +286,6 @@ ok(len(rev["items"]) == 2 and rev["contacto"]["empresa"] == "Knight Piésold" an
    "Portal KP muestra los 2 protocolos (correo enmascarado)")
 ok(c.get(rev["items"][0]["pdf_url"]).status_code == 200, "KP puede abrir el PDF desde el portal")
 
-r = api("POST", f"/revision/{token}/decidir", esperado=400,
-        json={"decisiones": [{"instancia_id": A, "decision": "aceptado"}], "codigo": "1", "firma": firma_png()})
-ok("recepción" in r["error"], "Antes de revisar debe confirmar la recepción")
 api("POST", f"/revision/{token}/codigo")
 api("POST", f"/revision/{token}/recepcion", json={"codigo": ultimo_codigo(), "firma": firma_png()})
 paq = next(p for p in api("GET", "/paquetes") if p["id"] == paq["id"])
@@ -320,10 +317,11 @@ ok(True, "El código sirve una sola vez")
 api("POST", "/paquetes", sup, json={"instancias": [C], "contacto_id": kp})
 t2 = api("GET", "/paquetes")[0]["enlace_demo"].split("t=")[1]
 api("POST", f"/revision/{t2}/codigo")
-api("POST", f"/revision/{t2}/recepcion", json={"codigo": ultimo_codigo(), "origen": "guardada"})
-api("POST", f"/revision/{t2}/codigo")
 api("POST", f"/revision/{t2}/decidir", json={"decisiones": [{"instancia_id": C, "decision": "aceptado"}],
                                             "codigo": ultimo_codigo(), "origen": "guardada"})
+p2 = next(p_ for p_ in api("GET", "/paquetes") if p_["enlace_demo"] and t2 in p_["enlace_demo"])
+ok(p2["firmado_recepcion"] and "Revisor KP" in texto_pdf(c.get(f"/api/paquetes/{p2['id']}/hoja-cargo").content),
+   "Un solo paso: KP aprueba al llegar y su firma vale como recepción (Hoja de Cargo firmada)")
 fc = next(f for f in api("GET", f"/protocolos/{C}")["firmas"] if f.get("contacto_id"))
 ok(fc["estado"] == "firmado" and (fc["sello_url"] or "").startswith("data:image/png"), "En el siguiente paquete KP firma con su firma guardada")
 

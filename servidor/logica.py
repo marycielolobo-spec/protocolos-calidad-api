@@ -974,8 +974,6 @@ def revision_decidir(token, decisiones, codigo, firma_imagen, contexto=None, ori
         raise ErrorNegocio("Decisión inválida")
     if any(d["decision"] == "rechazado" and not (d.get("motivo") or "").strip() for d in decisiones):
         raise ErrorNegocio("Todo rechazo requiere motivo")
-    if not p["recibido_at"]:
-        raise ErrorNegocio("Primero confirme la recepción del paquete")
     c = _contacto(p["contacto_id"])
     firma_imagen = _firma_externa(c, firma_imagen, origen)
     evidencia = _evidencia_externa(c, contexto, origen)
@@ -1023,6 +1021,11 @@ def revision_decidir(token, decisiones, codigo, firma_imagen, contexto=None, ori
         items = db.filas("select * from paquete_item where paquete_id = ?", p["id"])
         if all(x["decision"] != "pendiente" for x in items):
             db.actualizar("paquete", p["id"], {"cerrado_at": db.ahora()})
+        if not p["recibido_at"]:                 # un solo paso: la misma firma vale como recepción (Hoja de Cargo)
+            db.actualizar("paquete", p["id"], {"recibido_firma": firma_imagen, "recibido_at": db.ahora()})
+            for it in items:
+                _evento(it["instancia_id"], "recibido", {"paquete": p["codigo"], **evidencia}, c["email"])
+            _generar_hoja_cargo(p["id"])
 
         rech = sum(1 for d in decisiones if d["decision"] == "rechazado")
         emisor = db.fila("select * from perfil where id = ?", p["enviado_por"])
